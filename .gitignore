@@ -1,0 +1,38 @@
+# Dependencies
+node_modules/
+package-lock.json
+
+# Environment
+.env
+.env.local
+.env.production
+.env.*.local
+
+# Build output
+dist/
+build/
+*.log
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Database
+*.db
+*.sqlite
+
+# Prisma
+api/prisma/migrations/**/migration.sql.backup
+
+# Docker
+docker-compose.override.yml
+
+# Test files
+test-*.js
+*.test.local.js

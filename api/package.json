@@ -1,0 +1,61 @@
+{
+  "name": "agentfi-api",
+  "version": "1.0.0",
+  "description": "AgentFi Cross-Chain SDK API",
+  "main": "dist/server.js",
+  "directories": {
+    "test": "tests"
+  },
+  "scripts": {
+    "dev": "tsx watch src/server.ts",
+    "build": "tsc",
+    "start": "node dist/server.js",
+    "worker": "tsx src/workers/intent-monitor.worker.ts",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:ui": "vitest --ui",
+    "prisma:generate": "prisma generate",
+    "prisma:migrate": "prisma migrate dev",
+    "prisma:studio": "prisma studio",
+    "db:seed": "tsx prisma/seed.ts"
+  },
+  "keywords": [
+    "agentfi",
+    "near",
+    "intents",
+    "cross-chain"
+  ],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@defuse-protocol/intents-sdk": "^0.29.2",
+    "@defuse-protocol/one-click-sdk-typescript": "^0.1.1-0.2",
+    "@prisma/client": "^6.18.0",
+    "bcrypt": "^6.0.0",
+    "cors": "^2.8.5",
+    "dotenv": "^17.2.3",
+    "express": "^5.1.0",
+    "express-rate-limit": "^8.2.1",
+    "helmet": "^8.1.0",
+    "ioredis": "^5.8.2",
+    "jsonwebtoken": "^9.0.2",
+    "near-api-js": "^5.1.1",
+    "pino": "^10.1.0",
+    "pino-pretty": "^13.1.2",
+    "rate-limit-redis": "^4.2.3",
+    "zod": "^4.1.12"
+  },
+  "devDependencies": {
+    "@types/bcrypt": "^6.0.0",
+    "@types/cors": "^2.8.19",
+    "@types/express": "^5.0.5",
+    "@types/jsonwebtoken": "^9.0.10",
+    "@types/node": "^24.10.0",
+    "@vitest/ui": "^4.0.7",
+    "nodemon": "^3.1.10",
+    "prisma": "^6.18.0",
+    "tsx": "^4.20.6",
+    "typescript": "^5.9.3",
+    "vitest": "^4.0.7"
+  }
+}
