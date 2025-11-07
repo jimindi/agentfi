@@ -2,23 +2,30 @@
 
 **Cross-Chain Token Swaps for AI Trading Bots**
 
-[![Status](https://img.shields.io/badge/status-production-green)](https://api.agentfi.io)
-[![License](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
+[![Version](https://img.shields.io/github/v/release/jimindi/agentfi?color=blue)](https://github.com/jimindi/agentfi/releases)
+[![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+[![Node](https://img.shields.io/badge/node-%3E%3D20.0.0-brightgreen)](https://nodejs.org)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.0-blue)](https://www.typescriptlang.org/)
+[![NEAR](https://img.shields.io/badge/NEAR-Protocol-black)](https://near.org)
+[![Status](https://img.shields.io/badge/status-production-green)](https://github.com/jimindi/agentfi)
 
 AgentFi is a B2B API that enables AI trading bots and applications to execute cross-chain cryptocurrency swaps using NEAR Intents protocol.
 
-## 🚀 Quick Start
-```bash
-# 1. Get API key
-curl -X POST https://api.agentfi.io/v1/auth/api-key \
-  -H "Content-Type: application/json" \
-  -d '{"email":"your@email.com","name":"My Bot"}'
+---
 
-# 2. Execute swap (see docs for full example)
-curl -X POST https://api.agentfi.io/v1/swap \
-  -H "Authorization: Bearer YOUR_API_KEY" \
-  -d @swap-request.json
-```
+## 🚀 Quick Start
+
+    # 1. Get API key
+    curl -X POST https://api.agentfi.io/v1/auth/api-key \
+      -H "Content-Type: application/json" \
+      -d '{"email":"your@email.com","name":"My Bot"}'
+
+    # 2. Execute swap (see docs for full example)
+    curl -X POST https://api.agentfi.io/v1/swap \
+      -H "Authorization: Bearer YOUR_API_KEY" \
+      -d @swap-request.json
+
+---
 
 ## ✨ Features
 
@@ -27,13 +34,19 @@ curl -X POST https://api.agentfi.io/v1/swap \
 - ✅ **Simple API** - One endpoint to execute swaps
 - ✅ **Multi-chain** - NEAR, Ethereum, Solana, Bitcoin
 - ✅ **No bridges** - Direct cross-chain execution via intents
+- ✅ **15 bps fee** - Competitive platform fee (0.15%)
+
+---
 
 ## 📖 Documentation
 
-- [User Guide](api/docs/USER_GUIDE.md) - Complete API documentation
-- [Integration Guide](api/docs/INTEGRATION.md) - Step-by-step integration
-- [Architecture](api/docs/ARCHITECTURE.md) - System design
-- [API Reference](api/docs/API_REFERENCE.md) - Endpoint documentation
+- [**User Guide**](api/docs/USER_GUIDE.md) - Complete API documentation
+- [**Integration Guide**](api/docs/INTEGRATION.md) - Step-by-step integration
+- [**Architecture**](api/docs/ARCHITECTURE.md) - System design
+- [**API Reference**](api/docs/API_REFERENCE.md) - Endpoint documentation
+- [**Deployment**](api/docs/DEPLOYMENT.md) - Production deployment guide
+
+---
 
 ## 🎯 Use Cases
 
@@ -42,10 +55,11 @@ curl -X POST https://api.agentfi.io/v1/swap \
 - **Wallet Applications** - Seamless cross-chain transfers
 - **Market Makers** - Multi-chain liquidity provision
 
+---
+
 ## 🏗️ Architecture
-```
-Client → AgentFi API → OneClick API → NEAR Intents → Solver Network
-```
+
+    Client → AgentFi API → OneClick API → NEAR Intents → Solver Network
 
 AgentFi abstracts the complexity of:
 - NEP-413 intent signing
@@ -53,6 +67,8 @@ AgentFi abstracts the complexity of:
 - Deposit address management
 - Status monitoring
 - Error handling
+
+---
 
 ## ✅ Verified Working
 
@@ -62,14 +78,18 @@ Successfully executed mainnet swap on November 7, 2025:
 - **Time:** 10 seconds (execution)
 - **Transaction:** [View on Explorer](https://nearblocks.io/txns/3H6hfJHaWb3bpgBWxLuRt6ey37aCH7juzwoUWqSsRUCr)
 
+---
+
 ## 🛠️ Technology Stack
 
 - **Runtime:** Node.js 20 LTS
 - **Framework:** Express.js + TypeScript
-- **Database:** PostgreSQL + Prisma ORM
-- **Cache:** Redis
+- **Database:** PostgreSQL 16 + Prisma ORM
+- **Cache:** Redis 7
 - **Blockchain:** NEAR Protocol (via near-api-js)
 - **Intents:** OneClick API integration
+
+---
 
 ## 📦 Installation
 
@@ -82,62 +102,55 @@ Successfully executed mainnet swap on November 7, 2025:
 - OneClick API JWT token
 
 ### Setup
-```bash
-# Clone repository
-git clone https://github.com/your-org/agentfi-sdk.git
-cd agentfi-sdk/api
 
-# Install dependencies
-npm install
+    # Clone repository
+    git clone https://github.com/jimindi/agentfi.git
+    cd agentfi/api
 
-# Configure environment
-cp .env.example .env
-# Edit .env with your configuration
+    # Install dependencies
+    npm install
 
-# Setup database
-npx prisma generate
-npx prisma migrate deploy
+    # Configure environment
+    cp .env.example .env
+    # Edit .env with your configuration
 
-# Start API
-npm run dev
+    # Setup database
+    npx prisma generate
+    npx prisma migrate deploy
 
-# Start worker (separate terminal)
-npm run worker
-```
+    # Start API
+    npm run dev
+
+    # Start worker (separate terminal)
+    npm run worker
+
+---
 
 ## 🔑 Environment Variables
-```bash
-# Node
-NODE_ENV=production
-PORT=3000
 
-# Database
-DATABASE_URL=postgresql://user:pass@localhost:5432/agentfi
+    # Node
+    NODE_ENV=production
+    PORT=3000
 
-# Redis
-REDIS_URL=redis://localhost:6379
+    # Database
+    DATABASE_URL=postgresql://user:pass@localhost:5432/agentfi
 
-# NEAR
-NEAR_NETWORK=mainnet
-NEAR_ACCOUNT_ID=your-account.near
-NEAR_PRIVATE_KEY=ed25519:...
+    # Redis
+    REDIS_URL=redis://localhost:6379
 
-# OneClick API
-ONECLICK_JWT_TOKEN=your-jwt-token
+    # NEAR
+    NEAR_NETWORK=mainnet
+    NEAR_ACCOUNT_ID=your-account.near
+    NEAR_PRIVATE_KEY=ed25519:...
 
-# Security
-JWT_SECRET=random-32-char-string
-WEBHOOK_SECRET=random-32-char-string
-```
+    # OneClick API
+    ONECLICK_JWT_TOKEN=your-jwt-token
 
-## 🧪 Testing
-```bash
-# Run tests
-npm test
+    # Security
+    JWT_SECRET=random-32-char-string
+    WEBHOOK_SECRET=random-32-char-string
 
-# Test on mainnet (use small amounts!)
-npm run test:mainnet
-```
+---
 
 ## 📊 API Endpoints
 
@@ -150,20 +163,28 @@ npm run test:mainnet
 | `/v1/auth/api-key` | POST | ❌ | Create API key |
 | `/health` | GET | ❌ | Health check |
 
+---
+
 ## 🤝 Contributing
 
 We welcome contributions! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
 
+---
+
 ## 📄 License
 
 MIT License - see [LICENSE](LICENSE) for details.
+
+---
 
 ## 📞 Support
 
 - **Documentation:** https://docs.agentfi.io
 - **Email:** support@agentfi.io
 - **Discord:** https://discord.gg/agentfi
-- **Issues:** [GitHub Issues](https://github.com/your-org/agentfi-sdk/issues)
+- **Issues:** [GitHub Issues](https://github.com/jimindi/agentfi/issues)
+
+---
 
 ## 🗺️ Roadmap
 
@@ -176,6 +197,8 @@ MIT License - see [LICENSE](LICENSE) for details.
 - [ ] Rate limiting
 - [ ] SDK libraries (TypeScript, Python)
 - [ ] Advanced monitoring
+
+---
 
 ## 🙏 Acknowledgments
 
