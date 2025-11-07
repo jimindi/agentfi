@@ -70,6 +70,7 @@ model Intent {
   
   webhookUrl          String?   @map("webhook_url")
   metadata            Json?
+  nep413SignedData    Json?     @map("nep413_signed_data")
   errorMessage        String?   @map("error_message")
   
   user                User      @relation(fields: [userId], references: [id])

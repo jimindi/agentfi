@@ -33,7 +33,7 @@ export class NEARIntentsService {
     return assetMap[token] || 'nep141:' + token.toLowerCase() + '.near';
   }
 
-  async getQuote(params: { fromAsset: string; toAsset: string; amount: string; userWallet: string; }): Promise<any> {
+  async getQuote(params: { fromAsset: string; toAsset: string; amount: string; }): Promise<any> {
     try {
       const fromAssetId = this.getAssetId(params.fromAsset, 'near');
       const toAssetId = this.getAssetId(params.toAsset, 'near');
@@ -59,9 +59,9 @@ export class NEARIntentsService {
           depositType: 'INTENTS',
           destinationAsset: toAssetId,
           amount: params.amount,
-          refundTo: params.userWallet,
+          refundTo: 'agentfi-dev-1762307277.testnet',
           refundType: 'INTENTS',
-          recipient: params.userWallet,
+          recipient: 'agentfi-dev-1762307277.testnet',
           recipientType: 'INTENTS',
           deadline: deadline
         })

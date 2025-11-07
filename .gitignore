@@ -1,19 +1,26 @@
 # Dependencies
 node_modules/
-package-lock.json
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
 
 # Environment
 .env
 .env.local
 .env.production
-.env.*.local
+.env.test
 
-# Build output
+# Build
 dist/
 build/
-*.log
+*.tsbuildinfo
 
-# OS files
+# Logs
+logs/
+*.log
+/var/log/
+
+# OS
 .DS_Store
 Thumbs.db
 
@@ -22,17 +29,32 @@ Thumbs.db
 .idea/
 *.swp
 *.swo
+*~
 
-# Database
-*.db
-*.sqlite
+# Testing
+coverage/
+.nyc_output/
 
 # Prisma
-api/prisma/migrations/**/migration.sql.backup
+api/prisma/.env
+api/prisma/migrations/**/migration.sql
 
 # Docker
 docker-compose.override.yml
 
-# Test files
-test-*.js
-*.test.local.js
+# Temporary
+tmp/
+temp/
+*.tmp
+
+# Secrets
+*.pem
+*.key
+*.crt
+
+# Backups
+*.backup
+*.bak
+
+# PM2
+.pm2/

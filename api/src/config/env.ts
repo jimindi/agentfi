@@ -14,7 +14,8 @@ const envSchema = z.object({
   NEAR_PRIVATE_KEY: z.string().startsWith('ed25519:'),
   JWT_SECRET: z.string().min(32),
   WEBHOOK_SECRET: z.string().min(32),
-  API_BASE_URL: z.string().url()
+  API_BASE_URL: z.string().url(),
+  ONECLICK_JWT_TOKEN: z.string().optional() // Add this
 });
 
 export const env = envSchema.parse(process.env);

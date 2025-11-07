@@ -11,9 +11,9 @@ async function start() {
     await prisma.$connect();
     logger.info('✅ Database connected');
 
-    // Create Express app
-    const app = createApp();
-
+    // Create Express app (now async)
+    const app = await createApp();
+    
     // Start server
     const server = app.listen(Number(env.PORT), '0.0.0.0', () => {
       logger.info({

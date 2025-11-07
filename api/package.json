@@ -10,14 +10,15 @@
     "dev": "tsx watch src/server.ts",
     "build": "tsc",
     "start": "node dist/server.js",
-    "worker": "tsx src/workers/intent-monitor.worker.ts",
+    "worker": "tsx src/start-worker.ts",
     "test": "vitest run",
     "test:watch": "vitest",
     "test:ui": "vitest --ui",
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",
     "prisma:studio": "prisma studio",
-    "db:seed": "tsx prisma/seed.ts"
+    "db:seed": "tsx prisma/seed.ts",
+    "worker:dev": "tsx watch src/start-worker.ts"
   },
   "keywords": [
     "agentfi",
@@ -32,6 +33,7 @@
     "@defuse-protocol/one-click-sdk-typescript": "^0.1.1-0.2",
     "@prisma/client": "^6.18.0",
     "bcrypt": "^6.0.0",
+    "borsh": "^2.0.0",
     "cors": "^2.8.5",
     "dotenv": "^17.2.3",
     "express": "^5.1.0",
