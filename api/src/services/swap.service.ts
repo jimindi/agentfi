@@ -30,6 +30,9 @@ interface SwapParams {
   };
   signedIntent?: SignedIntent;
   metadata?: any;
+  // NEW: Authentication fields
+  userId: string;
+  apiKeyId: string;
 }
 
 interface SwapResult {
@@ -72,6 +75,8 @@ export class SwapService {
           from: params.from,
           to: params.to,
           user: params.user.walletAddress,
+          userId: params.userId,
+          apiKeyId: params.apiKeyId,
           hasSignedIntent: !!params.signedIntent,
         },
         'Starting hybrid swap execution'
@@ -108,11 +113,11 @@ export class SwapService {
         logger.info('Built intent message on server');
       }
 
-      // Step 3: Create intent record in database
+      // Step 3: Create intent record in database with authenticated user
       const intent = await prisma.intent.create({
         data: {
-          userId: '00000000-0000-0000-0000-000000000000',
-          apiKeyId: '00000000-0000-0000-0000-000000000001',
+          userId: params.userId, // Use authenticated user ID
+          apiKeyId: params.apiKeyId, // Use authenticated API key ID
           fromChain: params.from.chain,
           fromToken: params.from.token,
           fromAmount: params.from.amount,
@@ -122,7 +127,7 @@ export class SwapService {
           userWalletAddress: params.user.walletAddress,
           status: 'pending_deposit',
           webhookUrl: params.options?.webhookUrl,
-          // CRITICAL FIX: Store signedIntent in dedicated field
+          // CRITICAL: Store signedIntent in dedicated field
           nep413SignedData: params.signedIntent || null,
           metadata: {
             ...params.metadata,
@@ -133,12 +138,25 @@ export class SwapService {
       });
 
       logger.info({ 
-        intentId: intent.id, 
+        intentId: intent.id,
+        userId: params.userId,
+        apiKeyId: params.apiKeyId,
         hasSignedIntent: !!params.signedIntent,
         storedInNep413Field: !!intent.nep413SignedData 
-      }, 'Created intent record');
+      }, 'Created intent record with authenticated user');
 
-      // Step 4: Generate deposit instructions for user
+      // Step 4: Log usage for billing
+      await prisma.usageLog.create({
+        data: {
+          userId: params.userId,
+          intentId: intent.id,
+          apiCallType: 'swap',
+          volumeUsd: this.calculateVolumeUsd(params.from.amount, params.from.token),
+          feeChargedUsd: this.calculatePlatformFee(params.from.amount, params.from.token),
+        },
+      });
+
+      // Step 5: Generate deposit instructions for user
       const tokenContractId = this.getTokenContractId(params.from.token);
       const depositInstructions = await nearContractService.generateDepositInstructions({
         userAccountId: params.user.walletAddress,
@@ -146,13 +164,13 @@ export class SwapService {
         amount: params.from.amount,
       });
 
-      // Step 5: Format amounts for display
+      // Step 6: Format amounts for display
       const fromDecimals = this.getTokenDecimals(params.from.token);
       const toDecimals = this.getTokenDecimals(params.to.token);
       const fromFormatted = (Number(params.from.amount) / 10 ** fromDecimals).toFixed(6);
       const toFormatted = (Number(quote.estimatedOutput) / 10 ** toDecimals).toFixed(6);
 
-      // Step 6: Return instructions to user
+      // Step 7: Return instructions to user
       return {
         success: true,
         data: {
@@ -174,9 +192,9 @@ export class SwapService {
             exchangeRate: (Number(quote.estimatedOutput) / Number(params.from.amount)).toFixed(8),
             estimatedTime: '20-60 seconds',
             fees: quote.fees || {
-              platformFeeUsd: '0.00',
+              platformFeeUsd: this.calculatePlatformFee(params.from.amount, params.from.token).toFixed(2),
               networkFeeUsd: '0.50',
-              totalFeeUsd: '0.50',
+              totalFeeUsd: (parseFloat(this.calculatePlatformFee(params.from.amount, params.from.token).toFixed(2)) + 0.50).toFixed(2),
             },
           },
           intentMessage: intentMessage,
@@ -239,6 +257,82 @@ export class SwapService {
       logger.error({ error, intentId }, 'Failed to get swap status');
       throw error;
     }
+  }
+
+  /**
+   * Get swap quote (public endpoint)
+   */
+  async getQuote(params: { from: any; to: any }): Promise<any> {
+    try {
+      const quote = await nearIntentsService.getQuote({
+        fromAsset: params.from.token,
+        toAsset: params.to.token,
+        amount: params.from.amount,
+        userWallet: 'quote.near', // Use placeholder for quotes
+      });
+
+      const fromDecimals = this.getTokenDecimals(params.from.token);
+      const toDecimals = this.getTokenDecimals(params.to.token);
+
+      return {
+        success: true,
+        data: {
+          quote: {
+            fromAmount: params.from.amount,
+            fromAmountFormatted: (Number(params.from.amount) / 10 ** fromDecimals).toFixed(6),
+            estimatedOutput: quote.estimatedOutput,
+            estimatedOutputFormatted: (Number(quote.estimatedOutput) / 10 ** toDecimals).toFixed(6),
+            exchangeRate: (Number(quote.estimatedOutput) / Number(params.from.amount)).toFixed(8),
+            estimatedTime: '20-60 seconds',
+            fees: {
+              platformFeeUsd: this.calculatePlatformFee(params.from.amount, params.from.token).toFixed(2),
+              networkFeeUsd: '0.50',
+              totalFeeUsd: (parseFloat(this.calculatePlatformFee(params.from.amount, params.from.token).toFixed(2)) + 0.50).toFixed(2),
+            },
+          },
+        },
+      };
+    } catch (error: any) {
+      logger.error({ error, params }, 'Quote generation failed');
+      throw error;
+    }
+  }
+
+  /**
+   * Calculate platform fee (15 basis points = 0.15%)
+   */
+  private calculatePlatformFee(amount: string, token: string): number {
+    const decimals = this.getTokenDecimals(token);
+    const amountInToken = Number(amount) / 10 ** decimals;
+    const priceUsd = this.getTokenPriceUsd(token);
+    const volumeUsd = amountInToken * priceUsd;
+    return volumeUsd * 0.0015; // 0.15%
+  }
+
+  /**
+   * Calculate volume in USD
+   */
+  private calculateVolumeUsd(amount: string, token: string): number {
+    const decimals = this.getTokenDecimals(token);
+    const amountInToken = Number(amount) / 10 ** decimals;
+    const priceUsd = this.getTokenPriceUsd(token);
+    return amountInToken * priceUsd;
+  }
+
+  /**
+   * Get token price in USD (mock - should use price oracle in production)
+   */
+  private getTokenPriceUsd(token: string): number {
+    const prices: Record<string, number> = {
+      wNEAR: 2.34,
+      NEAR: 2.34,
+      USDC: 1.0,
+      USDT: 1.0,
+      ETH: 3500,
+      BTC: 95000,
+      SOL: 200,
+    };
+    return prices[token] || 1.0;
   }
 
   /**

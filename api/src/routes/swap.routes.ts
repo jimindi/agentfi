@@ -2,6 +2,7 @@ import { Router, Request, Response } from 'express';
 import { z } from 'zod';
 import { swapService } from '../services/swap.service';
 import { logger } from '../utils/logger';
+import { authenticateApiKey } from '../middleware/auth.middleware';
 
 const router = Router();
 
@@ -52,7 +53,8 @@ const QuoteRequestSchema = z.object({
   }),
 });
 
-router.post('/', async (req: Request, res: Response) => {
+// POST /v1/swap - Execute swap (PROTECTED)
+router.post('/', authenticateApiKey, async (req: Request, res: Response) => {
   try {
     const validated = SwapRequestSchema.parse(req.body);
     
@@ -63,12 +65,16 @@ router.post('/', async (req: Request, res: Response) => {
         user: validated.user.walletAddress,
         hasSignedIntent: !!validated.signedIntent,
         signedIntentStandard: validated.signedIntent.standard,
+        userId: req.user?.id,
+        apiKeyId: req.apiKey?.id,
       },
       'Swap request received with NEP-413 signed intent'
     );
 
     const result = await swapService.executeSwap({
       ...validated,
+      userId: req.user!.id,
+      apiKeyId: req.apiKey!.id,
       metadata: {
         ...validated.metadata,
         signedIntent: validated.signedIntent,
@@ -102,6 +108,7 @@ router.post('/', async (req: Request, res: Response) => {
   }
 });
 
+// GET /v1/swap/:id - Get swap status (PUBLIC)
 router.get('/:id', async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
@@ -134,6 +141,7 @@ router.get('/:id', async (req: Request, res: Response) => {
   }
 });
 
+// POST /v1/swap/quote - Get quote (PUBLIC - but can benefit from auth for rate limiting)
 router.post('/quote', async (req: Request, res: Response) => {
   try {
     const validated = QuoteRequestSchema.parse(req.body);
