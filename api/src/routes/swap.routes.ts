@@ -31,7 +31,7 @@ const SwapRequestSchema = z.object({
   user: z.object({
     walletAddress: z.string(),
   }),
-  signedIntent: NEP413SignedDataSchema,
+  signedIntent: NEP413SignedDataSchema.optional(),
   options: z
     .object({
       slippageTolerance: z.number().min(0).max(100).optional(),
@@ -64,24 +64,23 @@ router.post('/', authenticateApiKey, async (req: Request, res: Response) => {
         to: validated.to,
         user: validated.user.walletAddress,
         hasSignedIntent: !!validated.signedIntent,
-        signedIntentStandard: validated.signedIntent.standard,
+        signedIntentStandard: validated.signedIntent?.standard, // Fixed: Use optional chaining
         userId: req.user?.id,
         apiKeyId: req.apiKey?.id,
       },
-      'Swap request received with NEP-413 signed intent'
+      'Swap request received'
     );
 
     const result = await swapService.executeSwap({
       ...validated,
       userId: req.user!.id,
       apiKeyId: req.apiKey!.id,
-      metadata: {
-        ...validated.metadata,
-        signedIntent: validated.signedIntent,
-      },
     });
 
-    res.json(result);
+    res.json({
+      success: true,
+      data: result
+    });
   } catch (error: any) {
     logger.error({ error, body: req.body }, 'Swap request failed');
     
@@ -115,7 +114,11 @@ router.get('/:id', async (req: Request, res: Response) => {
     logger.info({ intentId: id }, 'Status check requested');
     
     const result = await swapService.getSwapStatus(id);
-    res.json(result);
+    
+    res.json({
+      success: true,
+      data: result
+    });
   } catch (error: any) {
     logger.error({ error, intentId: req.params.id }, 'Status check failed');
     
@@ -146,7 +149,11 @@ router.post('/quote', async (req: Request, res: Response) => {
   try {
     const validated = QuoteRequestSchema.parse(req.body);
     const result = await swapService.getQuote(validated);
-    res.json(result);
+    
+    res.json({
+      success: true,
+      data: result
+    });
   } catch (error: any) {
     logger.error({ error }, 'Quote request failed');
     
