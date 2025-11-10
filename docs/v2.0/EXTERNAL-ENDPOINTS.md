@@ -1,33 +1,55 @@
-# External API Verification
+# External API Verification Results
 
-## Purpose
-Verify which external APIs we actually need and document their exact usage.
-
-## Endpoints to Verify
-
-### 1. OneClick API
+## 1. OneClick API ✅ VERIFIED
 - **URL:** https://1click.chaindefuser.com
-- **Claimed Purpose:** Swap quotes and execution coordination
-- **Status:** 🔲 NOT VERIFIED
-- **Question:** Do we need this or can we use NEAR directly?
+- **Status:** WORKS WITHOUT JWT
+- **Purpose:** Get swap quotes and deposit addresses
+- **Decision:** ✅ REQUIRED - provides deposit addresses for swaps
 
-### 2. NEAR RPC
+**Test Result:**
+```json
+{
+  "quote": {
+    "depositAddress": "aa4573279cbdb57026cd7c9981d7e3e29e7155ff03f6be312ecba2f4d4f7e170",
+    "amountOut": "28583",
+    "timeEstimate": 10
+  }
+}
+```
+
+**Required Parameters:**
+- dry, swapType, slippageTolerance, depositType, originAsset, destinationAsset
+- amount, refundTo, refundType, recipient, recipientType, deadline
+
+---
+
+## 2. NEAR RPC ✅ VERIFIED
 - **URL:** https://rpc.mainnet.near.org
-- **Purpose:** Direct blockchain queries
-- **Status:** 🔲 NOT VERIFIED
-- **Question:** Can we execute swaps directly via RPC?
+- **Status:** WORKS
+- **Purpose:** Query blockchain state (account info, contract calls)
+- **Decision:** ✅ REQUIRED - for blockchain queries
 
-### 3. Token Info API
+**Test Result:**
+Successfully queried intents.near account.
+
+---
+
+## 3. Token Info API ✅ VERIFIED
 - **URL:** https://api-mng-console.chaindefuser.com/api/tokens
-- **Purpose:** List of supported tokens
-- **Status:** 🔲 NOT VERIFIED
-- **Question:** Can we maintain our own token list?
+- **Status:** WORKS
+- **Purpose:** List supported tokens with prices
+- **Decision:** ✅ USEFUL - provides token metadata and prices
 
-## Verification Plan
+**Test Result:**
+Returns array of tokens with defuse_asset_id, decimals, symbol, price.
 
-For each endpoint:
-1. Test without authentication
-2. Document actual response
-3. Determine if required
-4. Document alternatives
-5. Make decision: use/skip/replace
+---
+
+## Summary
+
+All three endpoints work and are useful:
+1. **OneClick API** - Critical for getting deposit addresses
+2. **NEAR RPC** - Critical for blockchain queries
+3. **Token API** - Useful for token info (could cache locally)
+
+**Next Step:** Design component architecture using these endpoints.
