@@ -9,15 +9,16 @@
 - Verified all external endpoints (OneClick, NEAR RPC, Token API)
 - Designed component architecture
 - Implemented OneClickService with tests
-- **Implemented SwapService with tests (Nov 11, 2025)**
+- Implemented SwapService with tests
+- **Implemented SwapController and routes with tests (Nov 11, 2025)**
 
 ### Current Task 🔄
-Create API controller
+Integration testing
 
 ### Next Steps 📋
 1. ✅ Implement OneClickService with tests
 2. ✅ Implement SwapService with tests
-3. Create API controller
+3. ✅ Create API controller
 4. Integration testing
 
 ## Session History
@@ -30,10 +31,8 @@ Create API controller
 - Designed component architecture
 
 ### November 11, 2025 - Session 2
-- Created OneClick types (oneclick.types.ts)
-- Implemented OneClickService with getQuote() method
-- Wrote unit tests (2 tests passing)
-- Created Swap types (swap.types.ts)
-- Implemented SwapService with executeSwap() method
-- Wrote unit tests (2 tests passing)
-- **Next:** Create API controller
+- Implemented OneClickService (2 tests passing)
+- Implemented SwapService (2 tests passing)
+- Implemented SwapController (3 tests passing)
+- Created v2 routes
+- **Next:** Integration testing
