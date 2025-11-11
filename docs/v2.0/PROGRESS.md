@@ -1,5 +1,7 @@
 # Development Progress
-## Current Phase: Debugging Worker Monitoring
+
+## Current Phase: Production Features
+
 ### Completed ✅
 - Created v2.0 branch
 - Cleaned git history of secrets
@@ -19,22 +21,16 @@
 - Created new implicit account with correct keys
 - Successfully wrapped NEAR to wNEAR
 - Created atomic swap test script
-- Successfully made deposit transaction to OneClick
+- **Fixed OneClick API endpoint (v0/status not v0/execution)**
+- **Successfully completed 2 mainnet swaps**
+- **Worker correctly detecting swap completion**
+- **Verified USDC delivery to intents.near**
 
 ### Current Task 🔄
-Debug worker monitoring - deposits succeed but status not updating
+Add webhook support and implement withdrawal flow
 
-### Blockers ⚠️
-Worker Issue:
-- Worker successfully polls OneClick API
-- Deposits complete on-chain successfully
-- OneClick API returns 404 for execution status
-- Status remains PENDING_DEPOSIT indefinitely
-- Need to investigate:
-  * OneClick API response format
-  * Deposit address validation
-  * Transaction confirmation timing
-  * API endpoint correctness
+### No Active Blockers ✅
+All critical issues resolved!
 
 ### Next Steps 📋
 1. ✅ Implement OneClickService with tests
@@ -45,13 +41,15 @@ Worker Issue:
 6. ✅ Implement monitoring worker
 7. ✅ Resolve NEAR key issues
 8. ✅ Test end-to-end with real mainnet deposit
-9. Debug worker status detection
-10. Wrap additional NEAR for testing
-11. Verify USDC delivery
-12. Add webhook support
-13. Production deployment
+9. ✅ Debug worker status detection
+10. Implement webhook notifications
+11. Add USDC withdrawal from intents.near
+12. Implement API key authentication
+13. Add rate limiting
+14. Production deployment
 
 ## Session History
+
 ### November 10, 2025 - Session 1
 - Started v2.0 branch
 - Removed secrets from git history
@@ -87,11 +85,66 @@ Worker Issue:
 
 ### November 11, 2025 - Session 5
 - Encountered NEAR key mismatch issue
-- Account 0bdbb89f14ca51f13cc962c65b118b5ff93b1e1ed21aa80274fe558e5bfea0f1 had wrong key in .env
+- Account 0bdbb89f... had wrong key in .env
 - Created new implicit account: 6c379f0bec7563a607ed663e3d5be642dd8de19c7a5dcac9acf1a9cbefb0a709
 - Funded account with 0.3756 NEAR from Coinbase
 - Wrapped 0.09875 NEAR to wNEAR
 - Created atomic-swap-test.sh for immediate deposits
 - Successfully executed deposit transaction (GBqafimY7bFY3C8R7SPKX2QaBgYmmtQQYWfTKxo7E4tU)
 - Worker monitoring but status not progressing from PENDING_DEPOSIT
-- Need to debug OneClick API integration in next session
+- Discovered wrong endpoint being used
+
+### November 11, 2025 - Session 6
+- Fixed critical bug: endpoint was /v0/execution not /v0/status
+- Updated status enum to include all documented values
+- Fixed remaining syntax errors in OneClickService and IntentMonitor
+- Worker now successfully detecting swap completion
+- Verified 2 mainnet swaps completed successfully
+- Confirmed USDC delivery: 53,174 microUSDC in intents.near
+- End-to-end flow fully working!
+
+## Key Learnings
+- OneClick API uses `/v0/status?depositAddress=X` not `/v0/execution/X`
+- Status values: PENDING_DEPOSIT, PROCESSING, SUCCESS, INCOMPLETE_DEPOSIT, REFUNDED, FAILED
+- With `recipientType: INTENTS`, funds go to intents.near contract
+- Worker polling every 20 seconds is sufficient
+- Implicit NEAR accounts work perfectly for service accounts
+
+## Fee Structure Requirements
+
+### Platform Fees (Not Yet Implemented)
+- **15 basis points (0.15%)** on all swap transactions
+- Fee should be added to swap amount and charged to user
+- Fee goes to service wallet (AgentFi revenue)
+
+### Minimum Transaction Amount
+- **$5 USD minimum** per swap
+- Reject swaps below minimum with clear error message
+- Calculate based on real-time token prices
+
+### Implementation Notes
+- Fee calculation must happen before quote request
+- Need to add USD price lookup for input token
+- Fee wallet address: TBD (create dedicated account)
+- Add fee validation in SwapService.executeSwap()
+- Update API response to show fees clearly
+
+### Example Fee Calculation
+```
+Input: 0.01 wNEAR ($0.0266 USD)
+Status: ❌ Below $5 minimum, rejected
+
+Input: 2.0 wNEAR ($5.32 USD)
+Platform fee: 2.0 × 0.0015 = 0.003 wNEAR ($0.008 USD)
+Total required: 2.003 wNEAR
+Output: ~5.31 USDC (after fees)
+Status: ✅ Approved
+```
+
+### TODO
+- [ ] Add fee calculation to SwapService
+- [ ] Create fee collection wallet
+- [ ] Add minimum transaction validation
+- [ ] Update quote response to show fees
+- [ ] Add fee tracking to database
+- [ ] Update API documentation with fee structure

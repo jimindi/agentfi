@@ -1,33 +1,103 @@
 # Project State - Quick Reference
 **Last Updated:** November 11, 2025  
 **Branch:** agentfi-v2.0  
-**Status:** Swap created successfully, worker monitoring issue
+**Status:** ✅ End-to-end flow working on mainnet!
 
 ## Quick Status
 ✅ V2 components complete (8 tests passing)
 ✅ V2 routes integrated into server
-✅ Intent monitoring worker implemented
-✅ New NEAR account created with correct keys
-✅ Deposit transaction successful
-❌ Worker not detecting swap execution (troubleshooting needed)
+✅ Intent monitoring worker working correctly
+✅ **END-TO-END MAINNET SWAPS SUCCESSFUL**
+✅ Two swaps completed: 0.01 wNEAR → 0.026534 USDC each
+✅ Total USDC received: 0.053174 (53,174 microUSDC)
 
-## New Service Account
+## Successful Mainnet Tests
+
+**Swap 1:**
+- Intent ID: 5994bfc1-0eaf-4ccb-b97a-50317102930e
+- Input: 0.01 wNEAR
+- Output: 0.026640 USDC
+- Tx: CuBvT8GR8k2cdU7rnQ8dDKZQzPoH9NBtz2BSXbg22dPb
+- Status: ✅ SUCCESS
+
+**Swap 2:**
+- Intent ID: ead57b08-0f8f-42fe-b212-22e0477779bd  
+- Input: 0.01 wNEAR
+- Output: 0.026534 USDC
+- Tx: 2sCZuGPLBxdCPvMHKdZBSTc3f3ghTu5mLhrT4iTnzuac
+- Status: ✅ SUCCESS
+
+**USDC Location:**
+- Held in intents.near contract
+- Balance: 53,174 microUSDC (0.053174 USDC)
+- Can be withdrawn using NEAR Intents withdrawal flow
+
+## Service Account
 **Account ID:** 6c379f0bec7563a607ed663e3d5be642dd8de19c7a5dcac9acf1a9cbefb0a709
-**Balance:** ~0.27 NEAR
-**wNEAR Balance:** ~0.08 wNEAR (need to wrap more for testing)
-**Credentials:** ~/.near-credentials/mainnet/[account-id].json
+**NEAR Balance:** ~0.27 NEAR
+**wNEAR Balance:** ~0.06 wNEAR (after two swaps)
+**USDC in Intents:** 0.053174 USDC
 
-## Recent Test Results
-**Latest Swap:**
-- Intent ID: ead57b08-0f8f-42fe-b212-22e0477779bd
-- Deposit Address: 741bffdf8329d9564f0378e12698aa97a567c750452f92dcfe90f4a8c990e435
-- Transaction: GBqafimY7bFY3C8R7SPKX2QaBgYmmtQQYWfTKxo7E4tU
-- Status: Deposit successful, worker shows PENDING_DEPOSIT
+## Working Flow
 
-**Issue:** Worker polls OneClick API but status remains PENDING_DEPOSIT despite successful deposit transaction.
+1. Client calls `POST /v2/swap` with swap parameters
+2. API requests quote from OneClick → receives depositAddress
+3. Client transfers tokens to depositAddress
+4. OneClick detects deposit and coordinates with solvers
+5. Worker polls `/v0/status` every 20 seconds
+6. When status = SUCCESS, worker updates database
+7. USDC delivered to recipient in intents.near
 
-## Working Endpoints
-Create swap (works):
+**Key Discovery:** 
+- Endpoint is `/v0/status?depositAddress=X` not `/v0/execution/X`
+- Status values: PENDING_DEPOSIT, PROCESSING, SUCCESS, INCOMPLETE_DEPOSIT, REFUNDED, FAILED
+- Recipients with `recipientType: INTENTS` receive funds in intents.near contract
+
+## Project Structure
+    /root/agentfi-sdk/
+    ├── api/src/v2/
+    │   ├── services/
+    │   │   ├── OneClickService.ts    ✅ Working (correct endpoint)
+    │   │   └── SwapService.ts        ✅ Working
+    │   ├── controllers/
+    │   │   └── SwapController.ts     ✅ Working
+    │   ├── routes/
+    │   │   ├── index.ts              ✅ Working
+    │   │   └── swap.routes.ts        ✅ Working
+    │   ├── workers/
+    │   │   ├── IntentMonitor.ts      ✅ Working (detecting SUCCESS)
+    │   │   └── index.ts              ✅ Working
+    │   └── tests/                    ✅ 8 passing
+
+## Next Steps
+
+### Immediate (High Priority)
+1. Add webhook support for swap completion notifications
+2. Implement USDC withdrawal from intents.near
+3. Add proper error handling and retry logic
+4. Implement API key authentication
+
+### Near Term
+5. Add rate limiting
+6. Implement comprehensive logging
+7. Add monitoring/alerts
+8. Production deployment setup
+
+### Future
+9. Multi-token support testing
+10. Cross-chain swaps (ETH, SOL, BTC)
+11. SDK libraries (TypeScript, Python)
+12. Documentation site
+
+## Running Services
+
+API server:
+    cd /root/agentfi-sdk/api && npm run dev
+
+Worker (separate terminal):
+    cd /root/agentfi-sdk/api && npm run worker
+
+Test swap:
     curl -X POST http://localhost:3000/v2/swap \
       -H "Content-Type: application/json" \
       -d '{
@@ -38,49 +108,3 @@ Create swap (works):
 
 Check status:
     curl http://localhost:3000/v2/swap/{intentId}
-
-Atomic swap script (immediate deposit):
-    ./atomic-swap-test.sh
-
-## Project Structure
-    /root/agentfi-sdk/
-    ├── api/src/v2/
-    │   ├── services/
-    │   │   ├── OneClickService.ts    ✅ Complete
-    │   │   └── SwapService.ts        ✅ Complete
-    │   ├── controllers/
-    │   │   └── SwapController.ts     ✅ Complete
-    │   ├── routes/
-    │   │   ├── index.ts              ✅ Complete
-    │   │   └── swap.routes.ts        ✅ Complete
-    │   ├── workers/
-    │   │   ├── IntentMonitor.ts      ⚠️ Runs but not detecting execution
-    │   │   └── index.ts              ✅ Complete
-    │   └── tests/                    ✅ 8 passing
-    ├── atomic-swap-test.sh           ✅ NEW - Atomic swap tester
-    └── ~/.near-credentials/mainnet/  ✅ Valid credentials
-
-## Next Task
-1. Debug why worker doesn't detect swap execution
-2. Check OneClick API response format
-3. Verify depositAddress matches transaction
-4. Wrap more NEAR for additional tests
-5. Check if USDC arrived in wallet
-
-## Key Learnings
-- Implicit NEAR accounts (64-char hash) work correctly
-- Must create credentials file in ~/.near-credentials/
-- Deposit must be made immediately after getting quote
-- Worker successfully polls but may need response format fix
-
-## Environment Configuration
-All credentials in:
-- .env file (account ID, OneClick JWT)
-- ~/.near-credentials/mainnet/[account-id].json (private keys)
-
-## Running Services
-API server:
-    cd /root/agentfi-sdk/api && npm run dev
-
-Worker (separate terminal):
-    cd /root/agentfi-sdk/api && npm run worker
