@@ -14,7 +14,7 @@ export interface QuoteResponse {
 }
 
 export interface ExecutionStatus {
-  status: 'PENDING_DEPOSIT' | 'EXECUTING' | 'SUCCESS' | 'FAILED';
+  status: 'PENDING_DEPOSIT' | 'PROCESSING' | 'SUCCESS' | 'INCOMPLETE_DEPOSIT' | 'REFUNDED' | 'FAILED';
   swapDetails?: {
     amountOut: string;
     nearTxHashes: string[];
@@ -67,7 +67,7 @@ class OneClickService {
   }
 
   async getExecutionStatus(depositAddress: string): Promise<ExecutionStatus> {
-    const response = await fetch(`${this.baseUrl}/v0/execution/${depositAddress}`, {
+    const response = await fetch(`${this.baseUrl}/v0/status?depositAddress=${depositAddress}`, {
       method: 'GET',
       headers: {
         'Authorization': `Bearer ${this.jwtToken}`

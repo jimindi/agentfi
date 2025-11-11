@@ -1,46 +1,43 @@
 import { PrismaClient } from '@prisma/client';
-import { OneClickService } from '../services/OneClickService';
+import oneClickService from '../services/OneClickService';
 
 const prisma = new PrismaClient();
-const oneClickService = new OneClickService();
 
-export class IntentMonitor {
-  private pollInterval: NodeJS.Timeout | null = null;
-  private isRunning = false;
+class IntentMonitor {
+  private intervalId?: NodeJS.Timeout;
 
-  async start() {
-    if (this.isRunning) {
-      console.log('Intent monitor already running');
-      return;
-    }
-
-    this.isRunning = true;
-    console.log('Starting intent monitor...');
+  start() {
+    console.log('Starting Intent Monitor worker...');
     
-    this.pollInterval = setInterval(() => this.checkPendingIntents(), 20000);
-    await this.checkPendingIntents();
+    // Check immediately on start
+    this.checkPendingIntents();
+    
+    // Then check every 20 seconds
+    this.intervalId = setInterval(() => {
+      this.checkPendingIntents();
+    }, 20000);
   }
 
   stop() {
-    if (this.pollInterval) {
-      clearInterval(this.pollInterval);
-      this.pollInterval = null;
+    if (this.intervalId) {
+      clearInterval(this.intervalId);
+      console.log('Intent Monitor worker stopped');
     }
-    this.isRunning = false;
-    console.log('Intent monitor stopped');
   }
 
   private async checkPendingIntents() {
     try {
-      const pendingIntents = await prisma.intent.findMany({
+      const intents = await prisma.intent.findMany({
         where: {
-          status: { in: ['pending_deposit', 'deposited', 'executing'] }
+          status: {
+            in: ['pending_deposit', 'executing']
+          }
         }
       });
 
-      console.log(`Checking ${pendingIntents.length} pending intents`);
+      console.log(`Found ${intents.length} pending intents to check`);
 
-      for (const intent of pendingIntents) {
+      for (const intent of intents) {
         await this.checkIntent(intent);
       }
     } catch (error) {
@@ -51,13 +48,16 @@ export class IntentMonitor {
   private async checkIntent(intent: any) {
     try {
       const depositAddress = intent.metadata?.depositAddress;
+      
       if (!depositAddress) {
         console.log(`Intent ${intent.id} has no deposit address`);
         return;
       }
 
       console.log(`Checking status for intent ${intent.id}, deposit: ${depositAddress}`);
+      
       const status = await oneClickService.getExecutionStatus(depositAddress);
+      
       console.log(`Status for ${intent.id}: ${status.status}`);
 
       if (status.status === 'SUCCESS') {
@@ -70,27 +70,25 @@ export class IntentMonitor {
             completedAt: new Date()
           }
         });
-        console.log(`Intent ${intent.id} completed`);
+        
+        console.log(`Intent ${intent.id} completed!`);
       } else if (status.status === 'FAILED') {
         await prisma.intent.update({
           where: { id: intent.id },
           data: {
             status: 'failed',
-            errorMessage: status.error || 'Swap failed'
+            errorMessage: 'Swap execution failed'
           }
         });
+        
         console.log(`Intent ${intent.id} failed`);
-      } else if (status.status === 'EXECUTING') {
-        if (intent.status !== 'executing') {
-          await prisma.intent.update({
-            where: { id: intent.id },
-            data: { status: 'executing' }
-          });
-          console.log(`Intent ${intent.id} now executing`);
-        }
+      } else {
+        console.log(`Intent ${intent.id} still ${status.status}`);
       }
     } catch (error) {
       console.error(`Error checking intent ${intent.id}:`, error);
     }
   }
 }
+
+export default new IntentMonitor();
