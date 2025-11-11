@@ -7,7 +7,10 @@ const swapController = new SwapController(prisma);
 
 const router = Router();
 
-router.post('/swap', (req, res) => swapController.executeSwap(req, res));
-router.get('/swap/:intentId', (req, res) => swapController.getSwapStatus(req, res));
+// Routes are mounted at /v2/swap, so these are:
+// POST /v2/swap
+// GET /v2/swap/:intentId
+router.post('/', (req, res) => swapController.executeSwap(req, res));
+router.get('/:intentId', (req, res) => swapController.getSwapStatus(req, res));
 
 export default router;
