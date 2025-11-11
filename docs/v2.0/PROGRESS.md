@@ -12,11 +12,11 @@
 - Implemented SwapService with tests
 - Implemented SwapController and routes with tests
 - Integration testing complete - All 8 tests passing
-- **V2 routes integrated into main server (Nov 11, 2025)**
-- **V2 API endpoints tested and working**
+- V2 routes integrated into main server
+- V2 API endpoints tested and working
 
 ### Current Task 🔄
-Ready for production deployment testing
+Test end-to-end flow with real deposit
 
 ### Next Steps 📋
 1. ✅ Implement OneClickService with tests
@@ -46,9 +46,10 @@ Ready for production deployment testing
 - All 8 tests passing
 
 ### November 11, 2025 - Session 3
-- Created v2 index router
+- Created v2 router index (api/src/v2/routes/index.ts)
 - Integrated v2 routes into app.ts
-- Fixed route mounting issues
-- Successfully tested POST /v2/swap
-- Successfully tested GET /v2/swap/:id
-- V2 API fully functional
+- Fixed route mounting (use / instead of /swap in swap.routes.ts)
+- Successfully tested POST /v2/swap and GET /v2/swap/:id
+- Created STATE.md as primary project reference
+- Updated PROJECT-INSTRUCTIONS.md
+- **Decision:** Mount v2 at /v2 prefix, mark v1 as deprecated
