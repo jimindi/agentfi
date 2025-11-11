@@ -1,114 +1,104 @@
 # Project State - Quick Reference
-
 **Last Updated:** November 11, 2025  
 **Branch:** agentfi-v2.0  
-**Status:** V2 API integrated and working ✅
+**Status:** Worker implemented, ready for end-to-end test
 
 ## Quick Status
-
 ✅ V2 components complete (8 tests passing)
 ✅ V2 routes integrated into server
-✅ Endpoints tested and working:
-   - POST /v2/swap - Creates swap, returns deposit address
-   - GET /v2/swap/:id - Returns swap status
+✅ Intent monitoring worker implemented
+⚠️ Ready for mainnet deposit test
+
+## 1Click API Flow (No Signing Required)
+
+The workflow is simpler than initially thought:
+
+1. Client calls AgentFi API POST /v2/swap
+2. AgentFi requests quote from 1Click API → receives unique depositAddress
+3. Client transfers tokens to depositAddress using standard NEAR transfer
+4. 1Click detects deposit automatically and executes swap
+5. Worker polls 1Click API for status updates
+6. Tokens delivered to recipient address
+
+NO NEP-413 signing needed - just standard token transfers.
 
 ## Working Endpoints
 
 Create swap:
-
     curl -X POST http://localhost:3000/v2/swap \
       -H "Content-Type: application/json" \
       -d '{
         "from": {"chain": "near", "token": "wNEAR", "amount": "10000000000000000000000"},
         "to": {"chain": "near", "token": "USDC"},
-        "user": {"walletAddress": "test.near"}
+        "user": {"walletAddress": "account.near"}
       }'
 
-Response:
-
-    {"success":true,"data":{"intentId":"...","status":"pending_deposit","depositAddress":"...","estimatedOutput":"..."}}
+Response includes depositAddress where user sends tokens.
 
 Check status:
-
     curl http://localhost:3000/v2/swap/{intentId}
-
-Response:
-
-    {"success":true,"data":{"intentId":"...","status":"pending_deposit"}}
 
 ## Project Structure
 
     /root/agentfi-sdk/
-    ├── api/
-    │   ├── src/
-    │   │   ├── app.ts                    ✅ V2 routes mounted
-    │   │   ├── server.ts                 
-    │   │   ├── v2/
-    │   │   │   ├── services/
-    │   │   │   │   ├── OneClickService.ts    ✅ Complete
-    │   │   │   │   └── SwapService.ts        ✅ Complete
-    │   │   │   ├── controllers/
-    │   │   │   │   └── SwapController.ts     ✅ Complete
-    │   │   │   ├── routes/
-    │   │   │   │   ├── index.ts              ✅ NEW - Router index
-    │   │   │   │   └── swap.routes.ts        ✅ Complete
-    │   │   │   ├── types/
-    │   │   │   │   └── index.ts              ✅ Complete
-    │   │   │   └── tests/
-    │   │   │       └── (8 tests passing)     ✅ Complete
-    │   │   └── routes/
-    │   │       ├── swap.routes.ts        ⚠️  V1 (deprecated)
-    │   │       ├── tokens.routes.ts
-    │   │       └── auth.routes.ts
-    └── docs/v2.0/                        ✅ Updated
+    ├── api/src/v2/
+    │   ├── services/
+    │   │   ├── OneClickService.ts    ✅ getQuote + getExecutionStatus
+    │   │   └── SwapService.ts        ✅ Complete
+    │   ├── controllers/
+    │   │   └── SwapController.ts     ✅ Complete
+    │   ├── routes/
+    │   │   ├── index.ts              ✅ Router
+    │   │   └── swap.routes.ts        ✅ Complete
+    │   ├── workers/
+    │   │   ├── IntentMonitor.ts      ✅ NEW - Polls every 20s
+    │   │   └── index.ts              ✅ NEW - Worker entry
+    │   ├── types/
+    │   │   └── index.ts              ✅ Complete
+    │   └── tests/                    ✅ 8 passing
 
 ## Next Task
 
-**Test end-to-end flow with real deposit**
+Test end-to-end with mainnet deposit:
 
-Steps:
-1. Create swap via API
-2. Make actual NEAR deposit to deposit address
-3. Monitor status updates
-4. Verify completion
+1. Create swap via API (get depositAddress)
+2. Transfer wNEAR to depositAddress using NEAR CLI on mainnet
+3. Monitor worker logs for status changes
+4. Verify completion in database
+
+## Running Services
+
+API server:
+    cd /root/agentfi-sdk/api && npm run dev
+
+Worker (separate terminal):
+    cd /root/agentfi-sdk/api && npm run worker
 
 ## Environment Variables
 
-Required variables:
-
+Required:
     DATABASE_URL=postgresql://...
     ONECLICK_JWT_TOKEN=your-token
     NEAR_NETWORK=mainnet
-    NEAR_ACCOUNT_ID=your-account.near
+    NEAR_ACCOUNT_ID=agentfi.near  (for mainnet)
     NEAR_PRIVATE_KEY=ed25519:...
-
-## Test Commands
-
-Run all tests:
-
-    cd /root/agentfi-sdk/api && npm test src/v2/tests
-
-Start server:
-
-    cd /root/agentfi-sdk/api && npm run dev
-
-## Known Issues
-
-None currently - all tests passing, API working.
 
 ## Decision Log
 
+### November 11, 2025 - Session 4
+- **Discovery:** No NEP-413 signing needed for 1Click API
+- **Reason:** 1Click uses simple deposit addresses, not intents protocol directly
+- **Impact:** Simplified client integration - just standard token transfers
+- **Implementation:** Created monitoring worker to poll 1Click status endpoint
+
 ### November 11, 2025 - Session 3
-- **Decision:** Mount v2 routes at /v2 prefix
-- **Reason:** Clean separation from v1, easy to deprecate v1 later
-- **Impact:** Users will access POST /v2/swap instead of /v1/swap
+- Mount v2 routes at /v2 prefix
+- Mark v1 as deprecated
 
 ### November 11, 2025 - Session 2
-- **Decision:** Use OneClick API directly instead of hybrid approach
-- **Reason:** Simpler, more reliable, official distribution channel
-- **Impact:** V2 routes will replace V1 routes eventually
+- Use OneClick API directly
+- Simpler, more reliable
 
 ### November 10, 2025 - Session 1
-- **Decision:** Create separate v2 directory for new implementation
-- **Reason:** Keep old code working while building new approach
-- **Impact:** Need to migrate or deprecate v1 routes later
+- Create v2 directory for new implementation
+- Keep v1 working during transition
