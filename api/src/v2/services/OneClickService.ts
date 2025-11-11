@@ -1,4 +1,4 @@
-import fetch from 'node-fetch';
+import { env } from '../../config/env';
 
 export interface QuoteRequest {
   fromAsset: string;
@@ -19,18 +19,14 @@ export interface ExecutionStatus {
     amountOut: string;
     nearTxHashes: string[];
   };
-  error?: string;
 }
 
-export class OneClickService {
+class OneClickService {
   private baseUrl = 'https://1click.chaindefuser.com';
   private jwtToken: string;
 
   constructor() {
-    this.jwtToken = process.env.ONECLICK_JWT_TOKEN || '';
-    if (!this.jwtToken) {
-      throw new Error('ONECLICK_JWT_TOKEN not set');
-    }
+    this.jwtToken = env.ONECLICK_JWT_TOKEN;
   }
 
   async getQuote(request: QuoteRequest): Promise<QuoteResponse> {
@@ -49,12 +45,16 @@ export class OneClickService {
         amount: request.amount,
         recipient: request.userWallet,
         recipientType: 'INTENTS',
+        refundTo: request.userWallet,
+        refundType: 'INTENTS',
+        slippageTolerance: 100,
         deadline: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString()
       })
     });
 
     if (!response.ok) {
-      throw new Error(`OneClick API error: ${response.statusText}`);
+      const errorText = await response.text();
+      throw new Error(`OneClick API error: ${response.statusText} - ${errorText}`);
     }
 
     const data: any = await response.json();
@@ -68,6 +68,7 @@ export class OneClickService {
 
   async getExecutionStatus(depositAddress: string): Promise<ExecutionStatus> {
     const response = await fetch(`${this.baseUrl}/v0/execution/${depositAddress}`, {
+      method: 'GET',
       headers: {
         'Authorization': `Bearer ${this.jwtToken}`
       }
@@ -81,10 +82,12 @@ export class OneClickService {
     }
 
     const data: any = await response.json();
+    
     return {
       status: data.status,
-      swapDetails: data.swapDetails,
-      error: data.error
+      swapDetails: data.swapDetails
     };
   }
 }
+
+export default new OneClickService();

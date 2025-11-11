@@ -1,25 +1,23 @@
-import { OneClickService } from './OneClickService';
+import OneClickService from './OneClickService';
 import { SwapRequest, SwapResult } from '../types/swap.types';
 import { PrismaClient } from '@prisma/client';
 
 export class SwapService {
-  private oneClickService: OneClickService;
   private prisma: PrismaClient;
   private readonly SYSTEM_USER_ID = '00000000-0000-0000-0000-000000000000';
   private readonly SYSTEM_API_KEY_ID = '87075fb4-d9dd-499f-9e88-6a98783a6407';
 
   constructor(prisma: PrismaClient) {
-    this.oneClickService = new OneClickService();
     this.prisma = prisma;
   }
 
   async executeSwap(request: SwapRequest): Promise<SwapResult> {
     // Get quote from OneClick
-    const quote = await this.oneClickService.getQuote({
-      originAsset: this.getAssetId(request.from.chain, request.from.token),
-      destinationAsset: this.getAssetId(request.to.chain, request.to.token),
+    const quote = await OneClickService.getQuote({
+      fromAsset: this.getAssetId(request.from.chain, request.from.token),
+      toAsset: this.getAssetId(request.to.chain, request.to.token),
       amount: request.from.amount,
-      recipient: request.user.walletAddress
+      userWallet: request.user.walletAddress
     });
 
     // Store in database
@@ -51,6 +49,34 @@ export class SwapService {
       depositAddress: quote.depositAddress,
       estimatedOutput: quote.estimatedOutput,
       estimatedTimeSeconds: quote.estimatedTimeSeconds
+    };
+  }
+
+  async getSwapStatus(intentId: string) {
+    const intent = await this.prisma.intent.findUnique({
+      where: { id: intentId }
+    });
+
+    if (!intent) {
+      throw new Error('Intent not found');
+    }
+
+    return {
+      intentId: intent.id,
+      status: intent.status,
+      from: {
+        chain: intent.fromChain,
+        token: intent.fromToken,
+        amount: intent.fromAmount
+      },
+      to: {
+        chain: intent.toChain,
+        token: intent.toToken,
+        actualOutput: intent.actualOutputAmount
+      },
+      txHash: intent.txHash,
+      createdAt: intent.createdAt,
+      completedAt: intent.completedAt
     };
   }
 

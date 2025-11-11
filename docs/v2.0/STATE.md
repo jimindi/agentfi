@@ -1,104 +1,86 @@
 # Project State - Quick Reference
 **Last Updated:** November 11, 2025  
 **Branch:** agentfi-v2.0  
-**Status:** Worker implemented, ready for end-to-end test
+**Status:** Swap created successfully, worker monitoring issue
 
 ## Quick Status
 ✅ V2 components complete (8 tests passing)
 ✅ V2 routes integrated into server
 ✅ Intent monitoring worker implemented
-⚠️ Ready for mainnet deposit test
+✅ New NEAR account created with correct keys
+✅ Deposit transaction successful
+❌ Worker not detecting swap execution (troubleshooting needed)
 
-## 1Click API Flow (No Signing Required)
+## New Service Account
+**Account ID:** 6c379f0bec7563a607ed663e3d5be642dd8de19c7a5dcac9acf1a9cbefb0a709
+**Balance:** ~0.27 NEAR
+**wNEAR Balance:** ~0.08 wNEAR (need to wrap more for testing)
+**Credentials:** ~/.near-credentials/mainnet/[account-id].json
 
-The workflow is simpler than initially thought:
+## Recent Test Results
+**Latest Swap:**
+- Intent ID: ead57b08-0f8f-42fe-b212-22e0477779bd
+- Deposit Address: 741bffdf8329d9564f0378e12698aa97a567c750452f92dcfe90f4a8c990e435
+- Transaction: GBqafimY7bFY3C8R7SPKX2QaBgYmmtQQYWfTKxo7E4tU
+- Status: Deposit successful, worker shows PENDING_DEPOSIT
 
-1. Client calls AgentFi API POST /v2/swap
-2. AgentFi requests quote from 1Click API → receives unique depositAddress
-3. Client transfers tokens to depositAddress using standard NEAR transfer
-4. 1Click detects deposit automatically and executes swap
-5. Worker polls 1Click API for status updates
-6. Tokens delivered to recipient address
-
-NO NEP-413 signing needed - just standard token transfers.
+**Issue:** Worker polls OneClick API but status remains PENDING_DEPOSIT despite successful deposit transaction.
 
 ## Working Endpoints
-
-Create swap:
+Create swap (works):
     curl -X POST http://localhost:3000/v2/swap \
       -H "Content-Type: application/json" \
       -d '{
         "from": {"chain": "near", "token": "wNEAR", "amount": "10000000000000000000000"},
         "to": {"chain": "near", "token": "USDC"},
-        "user": {"walletAddress": "account.near"}
+        "user": {"walletAddress": "6c379f0bec7563a607ed663e3d5be642dd8de19c7a5dcac9acf1a9cbefb0a709"}
       }'
-
-Response includes depositAddress where user sends tokens.
 
 Check status:
     curl http://localhost:3000/v2/swap/{intentId}
 
-## Project Structure
+Atomic swap script (immediate deposit):
+    ./atomic-swap-test.sh
 
+## Project Structure
     /root/agentfi-sdk/
     ├── api/src/v2/
     │   ├── services/
-    │   │   ├── OneClickService.ts    ✅ getQuote + getExecutionStatus
+    │   │   ├── OneClickService.ts    ✅ Complete
     │   │   └── SwapService.ts        ✅ Complete
     │   ├── controllers/
     │   │   └── SwapController.ts     ✅ Complete
     │   ├── routes/
-    │   │   ├── index.ts              ✅ Router
+    │   │   ├── index.ts              ✅ Complete
     │   │   └── swap.routes.ts        ✅ Complete
     │   ├── workers/
-    │   │   ├── IntentMonitor.ts      ✅ NEW - Polls every 20s
-    │   │   └── index.ts              ✅ NEW - Worker entry
-    │   ├── types/
+    │   │   ├── IntentMonitor.ts      ⚠️ Runs but not detecting execution
     │   │   └── index.ts              ✅ Complete
     │   └── tests/                    ✅ 8 passing
+    ├── atomic-swap-test.sh           ✅ NEW - Atomic swap tester
+    └── ~/.near-credentials/mainnet/  ✅ Valid credentials
 
 ## Next Task
+1. Debug why worker doesn't detect swap execution
+2. Check OneClick API response format
+3. Verify depositAddress matches transaction
+4. Wrap more NEAR for additional tests
+5. Check if USDC arrived in wallet
 
-Test end-to-end with mainnet deposit:
+## Key Learnings
+- Implicit NEAR accounts (64-char hash) work correctly
+- Must create credentials file in ~/.near-credentials/
+- Deposit must be made immediately after getting quote
+- Worker successfully polls but may need response format fix
 
-1. Create swap via API (get depositAddress)
-2. Transfer wNEAR to depositAddress using NEAR CLI on mainnet
-3. Monitor worker logs for status changes
-4. Verify completion in database
+## Environment Configuration
+All credentials in:
+- .env file (account ID, OneClick JWT)
+- ~/.near-credentials/mainnet/[account-id].json (private keys)
 
 ## Running Services
-
 API server:
     cd /root/agentfi-sdk/api && npm run dev
 
 Worker (separate terminal):
     cd /root/agentfi-sdk/api && npm run worker
-
-## Environment Variables
-
-Required:
-    DATABASE_URL=postgresql://...
-    ONECLICK_JWT_TOKEN=your-token
-    NEAR_NETWORK=mainnet
-    NEAR_ACCOUNT_ID=agentfi.near  (for mainnet)
-    NEAR_PRIVATE_KEY=ed25519:...
-
-## Decision Log
-
-### November 11, 2025 - Session 4
-- **Discovery:** No NEP-413 signing needed for 1Click API
-- **Reason:** 1Click uses simple deposit addresses, not intents protocol directly
-- **Impact:** Simplified client integration - just standard token transfers
-- **Implementation:** Created monitoring worker to poll 1Click status endpoint
-
-### November 11, 2025 - Session 3
-- Mount v2 routes at /v2 prefix
-- Mark v1 as deprecated
-
-### November 11, 2025 - Session 2
-- Use OneClick API directly
-- Simpler, more reliable
-
-### November 10, 2025 - Session 1
-- Create v2 directory for new implementation
-- Keep v1 working during transition
