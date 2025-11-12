@@ -1,7 +1,7 @@
 # Project State - Quick Reference
 **Last Updated:** November 12, 2025  
 **Branch:** agentfi-v2.0  
-**Status:** ✅ Webhook notifications implemented! Production-ready feature complete.
+**Status:** ✅ Intent expiration implemented - production quality monitoring
 
 ## Quick Status
 
@@ -9,55 +9,46 @@
 - ✅ POST /v2/swap - Create swap with correct recipient + fees + fee breakdown
 - ✅ GET /v2/swap/:id - Check swap status
 - ✅ Worker monitoring - Polls OneClick every 20s
+- ✅ Intent expiration - Auto-expires abandoned swaps after 24h
 - ✅ Direct delivery - USDC goes to user wallet automatically
 - ✅ Platform fees - 15 bps deducted via appFees
 - ✅ Minimum validation - $5 USD minimum enforced
 - ✅ Fee transparency - Platform fee + network fee shown separately
-- ✅ **Webhook notifications - Real-time swap completion alerts**
+- ✅ Webhook notifications - Real-time swap completion alerts
 
 **Next Task:** Implement API key authentication
 
 ## Latest Achievement
 
-### ✅ Webhook Notifications Implemented
+### ✅ Intent Expiration System
 
-**Feature:** Real-time HTTP callbacks when swaps complete or fail
+**Feature:** Automatic cleanup of abandoned swap intents
+
+**Problem Solved:**
+- 15 abandoned intents from testing were clogging worker logs
+- Worker was polling OneClick API for swaps that would never complete
+- No automatic cleanup of stale intents
 
 **Implementation:**
-- WebhookService with HMAC-SHA256 signature generation
-- Retry logic (3 attempts, 5 second delay)
-- IntentMonitor sends webhooks on completion/failure
-- Support for optional webhookUrl in swap requests
-- Complete documentation with examples
+- IntentMonitor checks intent age on startup and hourly
+- Intents in `pending_deposit` status expire after 24 hours
+- Expired intents marked with status `expired` and error message
+- Worker skips expired intents in polling loop
+- Cleaner logs - removed repetitive "still PENDING_DEPOSIT" messages
 
-**Test Results (November 12, 2025):**
-- All 26 tests passing (9 new webhook tests)
-- Signature verification working
-- Retry logic tested
-- Delivery timeout handling verified
-
-**Webhook Features:**
-```json
-{
-  "event": "swap.completed",
-  "eventId": "evt_123_abc",
-  "timestamp": "2025-11-12T10:30:00Z",
-  "data": {
-    "intentId": "...",
-    "status": "completed",
-    "txHash": "...",
-    "actualOutput": "..."
-  }
-}
-```
-
-**Security:**
-- HMAC-SHA256 signatures
-- Header: `X-AgentFi-Signature: sha256=...`
-- Constant-time comparison
-- 10-second timeout per attempt
+**Results:**
+- Cleaned up 15 stale intents from Nov 11
+- Worker now runs silently when no active swaps
+- Hourly cleanup prevents accumulation
+- Clear status tracking: 0 pending, 15 expired, 5 completed
 
 ## Previous Achievements
+
+### ✅ Webhook Notifications
+- Real-time HTTP callbacks when swaps complete or fail
+- HMAC-SHA256 signatures for security
+- Retry logic (3 attempts, 5 second delay)
+- Complete documentation with examples
 
 ### ✅ Fee Breakdown
 - Transparent platform + network fee display
@@ -98,14 +89,15 @@
 1. Client calls `POST /v2/swap` with swap parameters + optional webhookUrl
 2. API validates minimum amount ($5 USD) ✅
 3. API requests quote with `recipientType: DESTINATION_CHAIN` + `appFees: 15 bps`
-4. API stores webhookUrl in database ✅
+4. API stores intent with webhookUrl in database ✅
 5. API returns deposit address + transparent fee breakdown ✅
 6. Client transfers tokens to unique depositAddress
 7. OneClick detects deposit, coordinates with solvers
 8. Solvers execute swap and deliver USDC directly to user's wallet ✅
-9. Worker polls status, updates database when SUCCESS
-10. **Worker sends webhook notification with swap details** ✅
-11. Client checks status: `GET /v2/swap/:id` returns complete data
+9. Worker polls status every 20s, updates database when SUCCESS
+10. Worker sends webhook notification with swap details ✅
+11. Worker expires intents after 24h if no deposit ✅
+12. Client checks status: `GET /v2/swap/:id` returns complete data
 
 ## Platform Fees
 
@@ -122,6 +114,15 @@
 **Price Source:** Defuse token API
 **Cache:** 1 minute TTL
 **Fallback:** Hardcoded approximate prices
+**Status:** ✅ Implemented and tested
+
+## Intent Expiration
+
+**Timeout:** 24 hours from creation
+**Check Interval:** Hourly (plus immediate on startup)
+**Status Change:** pending_deposit → expired
+**Error Message:** "Intent expired after 24 hours without deposit"
+**Impact:** Keeps database clean, reduces unnecessary API calls
 **Status:** ✅ Implemented and tested
 
 ## Webhooks
@@ -142,7 +143,7 @@
 │   │   ├── OneClickService.ts       ✅ With fee capture
 │   │   ├── SwapService.ts           ✅ With fee formatting + webhook support
 │   │   ├── TokenPriceService.ts     ✅ USD price fetching
-│   │   └── WebhookService.ts        ✅ NEW - Webhook delivery
+│   │   └── WebhookService.ts        ✅ Webhook delivery
 │   ├── controllers/
 │   │   └── SwapController.ts        ✅ Returns fee breakdown
 │   ├── types/
@@ -151,19 +152,20 @@
 │   │   ├── index.ts                 ✅ Working
 │   │   └── swap.routes.ts           ✅ Working
 │   ├── workers/
-│   │   ├── IntentMonitor.ts         ✅ With webhook delivery
+│   │   ├── IntentMonitor.ts         ✅ With webhook delivery + expiration
+│   │   ├── IntentCleaner.ts         ✅ NEW - Expiration logic (unused, integrated into monitor)
 │   │   └── index.ts                 ✅ Working
 │   └── tests/                       ✅ 26 passing
 │       ├── OneClickService.test.ts       (2 tests)
 │       ├── SwapService.test.ts           (4 tests)
 │       ├── SwapController.test.ts        (3 tests)
 │       ├── TokenPriceService.test.ts     (7 tests)
-│       ├── WebhookService.test.ts        (9 tests) ✅ NEW
+│       ├── WebhookService.test.ts        (9 tests)
 │       └── integration.test.ts           (1 test)
 └── docs/v2.0/
     ├── STATE.md                     ✅ This file
     ├── PROGRESS.md                  ✅ Updated
-    ├── WEBHOOKS.md                  ✅ NEW - Complete guide
+    ├── WEBHOOKS.md                  ✅ Complete guide
     ├── ONECLICK-API.md              ✅ Complete reference
     └── ONECLICK-FEES.md             ✅ Fee guide
 ```
@@ -197,7 +199,7 @@ Start worker:
 cd /root/agentfi-sdk/api && npm run worker
 ```
 
-Test swap with webhook:
+Test swap:
 ```bash
 curl -X POST http://localhost:3000/v2/swap \
   -H "Content-Type: application/json" \
@@ -224,8 +226,10 @@ curl http://localhost:3000/v2/swap/{intentId} | jq
 ✅ Platform fees: 15 bps successfully implemented
 ✅ Minimum validation: $5 USD minimum enforced
 ✅ Fee transparency: Complete breakdown shown to users
-✅ **Real-time notifications: Webhooks on completion/failure**
+✅ Real-time notifications: Webhooks on completion/failure
 ✅ Monitoring: Worker detects completion automatically
+✅ Automatic cleanup: Expired intents removed after 24h
+✅ Clean logs: No spam from abandoned swaps
 ✅ Status tracking: API returns complete swap details
 ✅ Test coverage: 26 tests passing
 ✅ Security: HMAC-SHA256 webhook signatures

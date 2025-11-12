@@ -29,9 +29,12 @@
 - Minimum transaction validation ($5 USD) implemented
 - Tested larger swap amounts ($10)
 - Fee breakdown added to API response
-- **Webhook notifications implemented with HMAC signatures**
-- **Webhook retry logic (3 attempts, 5s delay)**
-- **Complete webhook documentation created**
+- Webhook notifications implemented with HMAC signatures
+- Webhook retry logic (3 attempts, 5s delay)
+- Complete webhook documentation created
+- **Intent expiration system - auto-expires after 24h**
+- **Cleaned up 15 abandoned test intents**
+- **Worker logs optimized - removed spam**
 
 ### Current Task 🔄
 Implement API key authentication
@@ -51,10 +54,11 @@ Implement API key authentication
 12. ✅ Test larger amounts ($10-50)
 13. ✅ Add fee breakdown to API response
 14. ✅ Implement webhook notifications
-15. Implement API key authentication
-16. Add rate limiting
-17. Comprehensive error handling
-18. Production deployment
+15. ✅ Intent expiration system
+16. Implement API key authentication
+17. Add rate limiting
+18. Comprehensive error handling
+19. Production deployment
 
 ## Session History
 
@@ -121,6 +125,33 @@ Implement API key authentication
 - Troubleshooting guide
 - FAQ section
 
+### November 12, 2025 - Session 11
+- Identified 15 abandoned intents from Nov 11 testing
+- Worker was spamming logs checking stale deposits
+- Implemented intent expiration system
+- Added automatic cleanup: expires after 24 hours
+- Runs on startup + hourly interval
+- Cleaned logs: removed repetitive messages
+- Manually expired 15 stale intents for clean slate
+- Verified expiration works with new test swap
+
+**Intent Expiration Implementation:**
+- `IntentMonitor.cleanExpiredIntents()` method
+- Checks for intents older than 24 hours
+- Updates status: pending_deposit → expired
+- Sets error message: "Intent expired after 24 hours without deposit"
+- Runs immediately on startup, then hourly
+- Worker skips expired intents in polling
+
+**Results:**
+- Database status: 0 pending, 15 expired, 5 completed
+- Worker logs clean and quiet
+- No more spam for abandoned swaps
+- System ready for production scale
+
+**Commits:**
+- 0c7a501: Add intent expiration - auto-expire abandoned swaps after 24h
+
 ## Key Learnings
 - OneClick API uses `/v0/status?depositAddress=X`
 - Status values: PENDING_DEPOSIT, PROCESSING, SUCCESS, INCOMPLETE_DEPOSIT, REFUNDED, FAILED
@@ -129,11 +160,20 @@ Implement API key authentication
 - Platform fees via appFees parameter work seamlessly
 - Real-time price validation essential for minimum enforcement
 - Fee transparency improves user trust and clarity
-- **Webhooks provide better UX than polling**
-- **HMAC signatures essential for webhook security**
-- **Retry logic improves reliability**
+- Webhooks provide better UX than polling
+- HMAC signatures essential for webhook security
+- Retry logic improves reliability
+- **Intent expiration prevents database bloat**
+- **Clean logs essential for production monitoring**
+- **24-hour timeout is reasonable for user deposits**
 
 ## Key Decisions
+
+### Intent Expiration
+**Decision:** 24-hour timeout with hourly cleanup
+**Check Frequency:** Immediate on startup + hourly
+**Status Change:** pending_deposit → expired
+**Impact:** Clean database, reduced API calls, clear logs
 
 ### Webhook Implementation
 **Decision:** HMAC-SHA256 signatures with 3 retry attempts
@@ -167,7 +207,7 @@ Implement API key authentication
 
 ## Next Session Goals
 
-### Immediate (Session 11)
+### Immediate (Session 12)
 1. Implement API key authentication
 2. Create middleware for key validation
 3. Add API key management endpoints
