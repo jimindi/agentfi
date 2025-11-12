@@ -1,52 +1,66 @@
 # Project State - Quick Reference
 **Last Updated:** November 12, 2025  
 **Branch:** agentfi-v2.0  
-**Status:** ✅ Fixed recipient issue + added platform fees
+**Status:** ✅ End-to-end working with correct recipient delivery!
 
-## Critical Fix Complete
+## Major Achievement
 
-### Issue: USDC stuck in intents.near contract
-**Root Cause:** Using `recipientType: "INTENTS"` instead of `"DESTINATION_CHAIN"`
+### ✅ Recipient Issue Fixed & Verified
 
-**Solution Applied:**
-- Changed `recipientType` to `"DESTINATION_CHAIN"` 
-- Changed `refundType` to `"ORIGIN_CHAIN"`
-- Funds now go directly to user's wallet ✅
+**Problem:** USDC was stuck in intents.near contract requiring manual withdrawal
 
-### Platform Fees Implemented
-- Added 15 basis points (0.15%) fee via `appFees` parameter
-- Fee recipient: Service wallet (6c379f0b...)
-- Fee deducted from input token before swap
+**Solution:** Changed `recipientType: "INTENTS"` → `"DESTINATION_CHAIN"`
+
+**Result:** Funds now go directly to user's wallet automatically!
+
+**Test Swap (November 12, 2025):**
+- Intent ID: `173bd2dc-90f3-4d3c-afa8-2ac38d6d18e8`
+- Input: 0.01 wNEAR ($0.0234 USD)
+- Output: 0.022979 USDC delivered to wallet
+- Platform fee: 15 bps (0.15%) deducted
+- Completion time: ~6 minutes
+- Status: ✅ SUCCESS
+- Transaction: [F3xCMTfZ...](https://nearblocks.io/txns/F3xCMTfZwHK5pAyF4UDFmFFJshtnpkTXt6ZLWKBdkd4Y)
+- **Verification:** Block explorer shows "Withdraw 0.022979 USDC From intents.near" ✅
 
 ## Service Account
+
 **Account ID:** 6c379f0bec7563a607ed663e3d5be642dd8de19c7a5dcac9acf1a9cbefb0a709
 **NEAR Balance:** ~0.27 NEAR
-**wNEAR Balance:** ~0.06 wNEAR
-**USDC in Intents:** 0.053174 USDC (from previous test swaps, needs withdrawal)
+**wNEAR Balance:** ~0.05 wNEAR (after test swap)
+**USDC in Intents:** 0.053174 USDC (from previous test swaps using wrong recipientType)
 
-## Working Flow (CORRECTED)
-1. Client calls `POST /v2/swap`
-2. API requests quote with `recipientType: DESTINATION_CHAIN`
-3. Client transfers tokens to depositAddress
-4. OneClick coordinates with solvers
-5. **USDC delivered directly to user's wallet** ✅
-6. Platform fee (15 bps) goes to AgentFi fee wallet
+## Corrected Flow
 
-## Recent Changes
-- **OneClickService.ts:** Fixed recipientType + added appFees
-- **env.ts:** Added AGENTFI_FEE_WALLET
-- **.env:** Set fee wallet to service account
-- **docs/:** Added ONECLICK-API.md and ONECLICK-FEES.md
+1. Client calls `POST /v2/swap` with swap parameters
+2. API requests quote with `recipientType: DESTINATION_CHAIN` + `appFees: 15 bps`
+3. Client transfers tokens to unique depositAddress
+4. OneClick detects deposit, coordinates with solvers
+5. **Solvers execute swap and deliver USDC directly to user's wallet** ✅
+6. Worker polls status, updates database when SUCCESS
+7. Client checks status: `GET /v2/swap/:id` returns complete data
+
+## Platform Fees
+
+**Rate:** 15 basis points (0.15%)
+**Method:** Deducted from input token via OneClick `appFees` parameter
+**Recipient:** Service wallet (6c379f0b...)
+
+**Example:**
+- User deposits: 0.01 wNEAR
+- Platform fee: 0.000015 wNEAR (15 bps)
+- Net input: 0.009985 wNEAR
+- Output: ~0.023 USDC (at current rates)
 
 ## Project Structure
 ```
 /root/agentfi-sdk/
 ├── api/src/v2/
 │   ├── services/
-│   │   ├── OneClickService.ts    ✅ Fixed + fees added
+│   │   ├── OneClickService.ts    ✅ Fixed recipient + fees
 │   │   └── SwapService.ts        ✅ Working
 │   ├── controllers/
-│   │   └── SwapController.ts     ✅ Working
+│   │   └── SwapController.ts     ✅ Fixed status endpoint
 │   ├── routes/
 │   │   ├── index.ts              ✅ Working
 │   │   └── swap.routes.ts        ✅ Working
@@ -57,17 +71,17 @@
 └── docs/v2.0/
     ├── STATE.md                  ✅ This file
     ├── PROGRESS.md               ✅ Updated
-    ├── ONECLICK-API.md           ✅ New
-    └── ONECLICK-FEES.md          ✅ New
+    ├── ONECLICK-API.md           ✅ Complete reference
+    └── ONECLICK-FEES.md          ✅ Fee guide
 ```
 
 ## Next Steps
 
 ### High Priority
-1. Test end-to-end swap with corrected recipient type
-2. Verify USDC arrives in user wallet (not intents.near)
-3. Withdraw stuck 0.053174 USDC from intents.near
-4. Add minimum transaction amount validation ($5 USD)
+1. ⚠️ Withdraw stuck 0.053174 USDC from intents.near (from old tests)
+2. Add minimum transaction validation ($5 USD minimum)
+3. Test with larger amounts to verify fee calculation
+4. Add fee breakdown to API response
 
 ### Medium Priority
 5. Implement webhook notifications
@@ -106,5 +120,14 @@ curl -X POST http://localhost:3000/v2/swap \
 
 Check status:
 ```bash
-curl http://localhost:3000/v2/swap/{intentId}
+curl http://localhost:3000/v2/swap/{intentId} | jq
 ```
+
+## Success Metrics
+
+✅ Non-custodial: Funds never held by AgentFi
+✅ Direct delivery: USDC goes straight to user wallet
+✅ Fast execution: ~6 minutes from deposit to completion
+✅ Platform fees: 15 bps successfully implemented
+✅ Monitoring: Worker detects completion automatically
+✅ Status tracking: API returns complete swap details

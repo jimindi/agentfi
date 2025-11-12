@@ -171,3 +171,48 @@ Status: ✅ Approved
 **Recipient:** Service wallet (same as NEAR account for now)
 **Future:** Dedicated fee collection wallet
 
+
+### Session 7 Summary (November 12, 2025)
+
+**Major Achievement:** ✅ Fixed recipient issue + verified end-to-end working
+
+**Changes Made:**
+1. Fixed OneClickService.ts:
+   - Changed `recipientType: "INTENTS"` → `"DESTINATION_CHAIN"`
+   - Changed `refundType: "INTENTS"` → `"ORIGIN_CHAIN"`
+   - Added platform fee: 15 bps via `appFees` parameter
+
+2. Fixed SwapController.ts:
+   - Removed hardcoded `pending_deposit` response
+   - Now properly calls `swapService.getSwapStatus()`
+
+3. Added documentation:
+   - ONECLICK-API.md (comprehensive API reference)
+   - ONECLICK-FEES.md (fee calculation guide)
+
+4. Environment updates:
+   - Added AGENTFI_FEE_WALLET to config
+   - Set fee wallet to service account
+
+**Test Results:**
+- Created swap: Intent ID `173bd2dc-90f3-4d3c-afa8-2ac38d6d18e8`
+- Input: 0.01 wNEAR ($0.0234 USD)
+- Output: 0.022979 USDC delivered to wallet
+- Platform fee: ~15 bps deducted
+- Status: ✅ SUCCESS in ~6 minutes
+- Tx: F3xCMTfZwHK5pAyF4UDFmFFJshtnpkTXt6ZLWKBdkd4Y
+
+**Key Verification:**
+- USDC withdrawn from intents.near and delivered to user wallet ✅
+- No manual withdrawal needed ✅
+- Platform fee correctly applied ✅
+
+**Commits:**
+- 60a47fd: Fix recipient type + add platform fees
+- 51c6ad8: Fix getSwapStatus controller
+
+**Remaining Work:**
+1. Withdraw stuck 0.053174 USDC from previous tests
+2. Add minimum transaction validation ($5 USD)
+3. Implement webhooks
+4. Add API key authentication
