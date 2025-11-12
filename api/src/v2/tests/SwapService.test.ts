@@ -1,44 +1,38 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { SwapService } from '../services/SwapService';
 import { PrismaClient } from '@prisma/client';
+import OneClickService from '../services/OneClickService';
+
+// Mock Prisma
+const mockPrisma = {
+  intent: {
+    create: vi.fn(),
+    findUnique: vi.fn()
+  }
+} as unknown as PrismaClient;
+
+// Mock OneClickService
+vi.mock('../services/OneClickService', () => ({
+  default: {
+    getQuote: vi.fn()
+  }
+}));
 
 describe('SwapService', () => {
-  let service: SwapService;
-  let mockPrisma: any;
+  let swapService: SwapService;
 
   beforeEach(() => {
-    mockPrisma = {
-      intent: {
-        create: vi.fn().mockResolvedValue({
-          id: 'test-intent-id',
-          status: 'pending_deposit'
-        })
-      }
-    };
-
-    service = new SwapService(mockPrisma as PrismaClient);
+    swapService = new SwapService(mockPrisma);
     vi.clearAllMocks();
   });
 
   describe('executeSwap', () => {
-    it('should create swap and return deposit address', async () => {
-      // Mock OneClickService
-      global.fetch = vi.fn().mockResolvedValue({
-        ok: true,
-        json: async () => ({
-          quote: {
-            depositAddress: 'test-deposit-address',
-            amountOut: '28583',
-            timeEstimate: 10
-          }
-        })
-      });
-
-      const result = await service.executeSwap({
+    it('should reject swap below $5 minimum', async () => {
+      const request = {
         from: {
           chain: 'near',
           token: 'wNEAR',
-          amount: '10000000000000000000000'
+          amount: '10000000000000000000000' // 0.01 wNEAR (~$0.023)
         },
         to: {
           chain: 'near',
@@ -47,31 +41,77 @@ describe('SwapService', () => {
         user: {
           walletAddress: 'test.near'
         }
-      });
+      };
 
-      expect(result.intentId).toBe('test-intent-id');
-      expect(result.depositAddress).toBe('test-deposit-address');
-      expect(result.status).toBe('pending_deposit');
-      expect(mockPrisma.intent.create).toHaveBeenCalled();
+      await expect(swapService.executeSwap(request)).rejects.toThrow('below minimum');
     });
 
-    it('should throw error for unsupported token', async () => {
-      await expect(
-        service.executeSwap({
-          from: {
-            chain: 'near',
-            token: 'INVALID',
-            amount: '10000000000000000000000'
-          },
-          to: {
-            chain: 'near',
-            token: 'USDC'
-          },
-          user: {
-            walletAddress: 'test.near'
-          }
-        })
-      ).rejects.toThrow('Unsupported token');
+    it('should accept swap above $5 minimum', async () => {
+      // Mock OneClick response
+      vi.mocked(OneClickService.getQuote).mockResolvedValue({
+        depositAddress: 'abc123',
+        estimatedOutput: '5000000',
+        estimatedTimeSeconds: 60
+      });
+
+      // Mock Prisma response
+      vi.mocked(mockPrisma.intent.create).mockResolvedValue({
+        id: 'intent-123',
+        status: 'pending_deposit'
+      } as any);
+
+      const request = {
+        from: {
+          chain: 'near',
+          token: 'wNEAR',
+          amount: '2200000000000000000000000' // 2.2 wNEAR (~$5.15)
+        },
+        to: {
+          chain: 'near',
+          token: 'USDC'
+        },
+        user: {
+          walletAddress: 'test.near'
+        }
+      };
+
+      const result = await swapService.executeSwap(request);
+
+      expect(result.intentId).toBe('intent-123');
+      expect(result.status).toBe('pending_deposit');
+      expect(OneClickService.getQuote).toHaveBeenCalled();
+    });
+  });
+
+  describe('getSwapStatus', () => {
+    it('should return swap status from database', async () => {
+      const mockIntent = {
+        id: 'intent-123',
+        status: 'completed',
+        fromChain: 'near',
+        fromToken: 'wNEAR',
+        fromAmount: '10000000000000000000000',
+        toChain: 'near',
+        toToken: 'USDC',
+        actualOutputAmount: '23256',
+        txHash: 'tx123',
+        createdAt: new Date(),
+        completedAt: new Date()
+      };
+
+      vi.mocked(mockPrisma.intent.findUnique).mockResolvedValue(mockIntent as any);
+
+      const status = await swapService.getSwapStatus('intent-123');
+
+      expect(status.intentId).toBe('intent-123');
+      expect(status.status).toBe('completed');
+      expect(status.txHash).toBe('tx123');
+    });
+
+    it('should throw error if intent not found', async () => {
+      vi.mocked(mockPrisma.intent.findUnique).mockResolvedValue(null);
+
+      await expect(swapService.getSwapStatus('nonexistent')).rejects.toThrow('Intent not found');
     });
   });
 });

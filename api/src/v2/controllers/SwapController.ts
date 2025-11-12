@@ -20,6 +20,31 @@ export class SwapController {
         data: result
       });
     } catch (error: any) {
+      // Check if it's a validation error (minimum amount)
+      if (error.message.includes('below minimum')) {
+        res.status(400).json({
+          success: false,
+          error: {
+            code: 'AMOUNT_TOO_LOW',
+            message: error.message
+          }
+        });
+        return;
+      }
+
+      // Check if it's an unsupported token error
+      if (error.message.includes('Unsupported token')) {
+        res.status(400).json({
+          success: false,
+          error: {
+            code: 'UNSUPPORTED_TOKEN',
+            message: error.message
+          }
+        });
+        return;
+      }
+
+      // Generic server error
       res.status(500).json({
         success: false,
         error: {

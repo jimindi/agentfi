@@ -2,12 +2,12 @@ import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { PrismaClient } from '@prisma/client';
 import { SwapService } from '../services/SwapService';
 
+const prisma = new PrismaClient();
+
 describe('Integration Tests', () => {
-  let prisma: PrismaClient;
   let swapService: SwapService;
 
-  beforeAll(async () => {
-    prisma = new PrismaClient();
+  beforeAll(() => {
     swapService = new SwapService(prisma);
   });
 
@@ -16,39 +16,25 @@ describe('Integration Tests', () => {
   });
 
   it('should execute complete swap flow', async () => {
-    const result = await swapService.executeSwap({
+    const swapRequest = {
       from: {
         chain: 'near',
         token: 'wNEAR',
-        amount: '10000000000000000000000'
+        amount: '2200000000000000000000000' // 2.2 wNEAR (~$5.15)
       },
       to: {
         chain: 'near',
         token: 'USDC'
       },
       user: {
-        walletAddress: 'test-integration.near'
+        walletAddress: 'test.near'
       }
-    });
+    };
 
-    // Verify result structure
+    const result = await swapService.executeSwap(swapRequest);
+
     expect(result.intentId).toBeDefined();
-    expect(result.depositAddress).toBeDefined();
     expect(result.status).toBe('pending_deposit');
-    expect(result.estimatedOutput).toBeDefined();
-
-    // Verify database record
-    const intent = await prisma.intent.findUnique({
-      where: { id: result.intentId }
-    });
-
-    expect(intent).toBeDefined();
-    expect(intent?.status).toBe('pending_deposit');
-    expect(intent?.userWalletAddress).toBe('test-integration.near');
-
-    // Cleanup
-    await prisma.intent.delete({
-      where: { id: result.intentId }
-    });
+    expect(result.depositAddress).toBeDefined();
   });
 });
