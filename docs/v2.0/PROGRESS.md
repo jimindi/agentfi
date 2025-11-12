@@ -11,7 +11,7 @@
 - Implemented OneClickService with tests
 - Implemented SwapService with tests
 - Implemented SwapController and routes with tests
-- Integration testing complete - All 8 tests passing
+- Integration testing complete - All tests passing
 - V2 routes integrated into main server
 - V2 API endpoints tested and working
 - Implemented IntentMonitor worker
@@ -22,14 +22,15 @@
 - Successfully wrapped NEAR to wNEAR
 - Created atomic swap test script
 - Fixed OneClick API endpoint (v0/status not v0/execution)
-- Successfully completed 2 mainnet swaps
+- Successfully completed mainnet swaps
 - Worker correctly detecting swap completion
 - **Fixed recipient issue: USDC now delivered directly to user wallet**
 - **Platform fees (15 bps) successfully implemented via appFees**
 - **End-to-end flow verified working on mainnet**
+- **Minimum transaction validation ($5 USD) implemented and tested**
 
 ### Current Task 🔄
-Add minimum transaction validation ($5 USD minimum)
+Test larger swap amounts and add fee breakdown to API response
 
 ### Note on Stuck USDC ℹ️
 - 0.053174 USDC stuck in intents.near from old account (0bdbb89f...)
@@ -50,12 +51,13 @@ Add minimum transaction validation ($5 USD minimum)
 9. ✅ Debug worker status detection
 10. ✅ Fix recipient delivery issue
 11. ✅ Implement platform fees
-12. Add minimum transaction validation ($5 USD)
-13. Test with larger amounts
-14. Implement webhook notifications
-15. Implement API key authentication
-16. Add rate limiting
-17. Production deployment
+12. ✅ Add minimum transaction validation ($5 USD)
+13. Test with larger amounts ($10-50)
+14. Add fee breakdown to API response
+15. Implement webhook notifications
+16. Implement API key authentication
+17. Add rate limiting
+18. Production deployment
 
 ## Session History
 
@@ -137,6 +139,30 @@ Add minimum transaction validation ($5 USD minimum)
 - 51c6ad8: Fix getSwapStatus controller
 - 27eb482: Session 7 complete - verified end-to-end working
 
+### November 12, 2025 - Session 8
+- Documented stuck USDC from old account (not recoverable)
+- Created TokenPriceService for USD price fetching
+- Implemented minimum transaction validation ($5 USD)
+- Added proper error handling (400 for validation errors)
+- Created 7 TokenPriceService tests
+- Updated all existing tests for minimum validation
+- All 17 tests passing
+
+**Implementation:**
+- Real-time price fetching from Defuse token API
+- 1-minute price cache to reduce API calls
+- Fallback prices if API unavailable
+- Clear error messages: "Transaction amount ($X.XX) is below minimum of $5.00"
+
+**Test Results:**
+- ❌ Blocks: 0.01 wNEAR ($0.03) - Below minimum
+- ✅ Allows: 2.2 wNEAR ($5.15) - Above minimum
+- Quote generated with deposit address
+
+**Commits:**
+- 5da76c4: Update docs - note stuck USDC, set next task
+- d5758a0: Add minimum transaction validation ($5 USD)
+
 ## Key Learnings
 - OneClick API uses `/v0/status?depositAddress=X` not `/v0/execution/X`
 - Status values: PENDING_DEPOSIT, PROCESSING, SUCCESS, INCOMPLETE_DEPOSIT, REFUNDED, FAILED
@@ -145,6 +171,7 @@ Add minimum transaction validation ($5 USD minimum)
 - Worker polling every 20 seconds is sufficient
 - Implicit NEAR accounts work perfectly for service accounts
 - Platform fees via appFees parameter work seamlessly
+- Real-time price validation essential for minimum enforcement
 
 ## Key Decisions
 
@@ -159,49 +186,24 @@ Add minimum transaction validation ($5 USD minimum)
 **Recipient:** Service wallet (6c379f0b...)
 **Status:** ✅ Verified working
 
+### Minimum Transaction Amount
+**Decision:** $5 USD minimum per swap
+**Method:** Real-time price validation via TokenPriceService
+**Status:** ✅ Implemented and tested
+**Impact:** Prevents tiny swaps that aren't cost-effective
+
 ### Stuck USDC from Old Account
 **Decision:** Document but don't attempt recovery
 **Reason:** Old account (0bdbb89f...) key mismatch, inaccessible
 **Amount:** 0.053174 USDC in intents.near
 **Impact:** None - new account works correctly
 
-## Fee Structure Requirements
-
-### Platform Fees ✅ Implemented
-- **15 basis points (0.15%)** on all swap transactions
-- Fee deducted from input token via OneClick appFees parameter
-- Fee goes to service wallet (6c379f0b...)
-- ✅ Verified working in mainnet test
-
-### Minimum Transaction Amount ⏳ Next Task
-- **$5 USD minimum** per swap
-- Reject swaps below minimum with clear error message
-- Calculate based on real-time token prices
-
-### Implementation Plan
-1. Add USD price lookup service
-2. Add validation in SwapService.executeSwap()
-3. Return clear error for below-minimum swaps
-4. Add tests for validation logic
-
-### Example Validation
-```
-Input: 0.01 wNEAR ($0.0234 USD)
-Status: ❌ Below $5 minimum, rejected
-
-Input: 2.0 wNEAR ($5.32 USD)
-Platform fee: 2.0 × 0.0015 = 0.003 wNEAR ($0.008 USD)
-Total required: 2.003 wNEAR
-Output: ~5.31 USDC (after fees)
-Status: ✅ Approved
-```
-
 ## Next Session Goals
 
-### Immediate (Session 8)
-1. Add minimum transaction validation ($5 USD)
-2. Test with larger amounts ($10-50)
-3. Verify fee calculation accuracy
+### Immediate (Session 9)
+1. Test with larger amounts ($10-50)
+2. Add fee breakdown to API response (show platform fee + network fee separately)
+3. Add more token price sources for redundancy
 
 ### Short Term
 4. Implement webhook notifications

@@ -1,7 +1,7 @@
 # Project State - Quick Reference
 **Last Updated:** November 12, 2025  
 **Branch:** agentfi-v2.0  
-**Status:** ✅ End-to-end working with correct recipient delivery!
+**Status:** ✅ Minimum validation working! Ready for larger amount testing.
 
 ## Quick Status
 
@@ -11,10 +11,37 @@
 - ✅ Worker monitoring - Polls OneClick every 20s
 - ✅ Direct delivery - USDC goes to user wallet automatically
 - ✅ Platform fees - 15 bps deducted via appFees
+- ✅ Minimum validation - $5 USD minimum enforced
 
-**Next Task:** Add minimum transaction validation ($5 USD)
+**Next Task:** Test with larger amounts ($10-50) and add fee breakdown to response
 
-## Major Achievement
+## Latest Achievement
+
+### ✅ Minimum Transaction Validation Implemented
+
+**Feature:** $5 USD minimum enforced on all swaps
+
+**Implementation:**
+- Created TokenPriceService for real-time USD prices
+- Fetches from Defuse token API with 1-minute cache
+- Fallback prices if API unavailable
+- Clear error messages for users
+
+**Test Results (November 12, 2025):**
+```bash
+# Below minimum - REJECTED
+0.01 wNEAR ($0.03) → "Transaction amount ($0.03) is below minimum of $5.00"
+
+# Above minimum - ACCEPTED
+2.2 wNEAR ($5.15) → Quote generated with deposit address
+```
+
+**Code Quality:**
+- All 17 tests passing
+- 7 new TokenPriceService tests
+- Proper error handling (400 for validation)
+
+## Previous Achievement
 
 ### ✅ Recipient Issue Fixed & Verified
 
@@ -32,13 +59,12 @@
 - Completion time: ~6 minutes
 - Status: ✅ SUCCESS
 - Transaction: [F3xCMTfZ...](https://nearblocks.io/txns/F3xCMTfZwHK5pAyF4UDFmFFJshtnpkTXt6ZLWKBdkd4Y)
-- **Verification:** Block explorer shows "Withdraw 0.022979 USDC From intents.near" ✅
 
 ## Service Account
 
 **Account ID:** 6c379f0bec7563a607ed663e3d5be642dd8de19c7a5dcac9acf1a9cbefb0a709
 **NEAR Balance:** ~0.27 NEAR
-**wNEAR Balance:** ~0.05 wNEAR (after test swap)
+**wNEAR Balance:** ~0.03 wNEAR (after test swaps)
 
 ### Note on Old Account
 **Old Account:** 0bdbb89f... (inaccessible due to key mismatch)
@@ -46,15 +72,16 @@
 **Status:** Cannot recover - documented for reference only
 **Impact:** None - new account (6c379f0b...) works correctly with DESTINATION_CHAIN
 
-## Corrected Flow
+## Complete Flow
 
 1. Client calls `POST /v2/swap` with swap parameters
-2. API requests quote with `recipientType: DESTINATION_CHAIN` + `appFees: 15 bps`
-3. Client transfers tokens to unique depositAddress
-4. OneClick detects deposit, coordinates with solvers
-5. **Solvers execute swap and deliver USDC directly to user's wallet** ✅
-6. Worker polls status, updates database when SUCCESS
-7. Client checks status: `GET /v2/swap/:id` returns complete data
+2. **API validates minimum amount ($5 USD)** ✅
+3. API requests quote with `recipientType: DESTINATION_CHAIN` + `appFees: 15 bps`
+4. Client transfers tokens to unique depositAddress
+5. OneClick detects deposit, coordinates with solvers
+6. **Solvers execute swap and deliver USDC directly to user's wallet** ✅
+7. Worker polls status, updates database when SUCCESS
+8. Client checks status: `GET /v2/swap/:id` returns complete data
 
 ## Platform Fees
 
@@ -64,10 +91,30 @@
 **Status:** ✅ Verified working
 
 **Example:**
-- User deposits: 0.01 wNEAR
-- Platform fee: 0.000015 wNEAR (15 bps)
-- Net input: 0.009985 wNEAR
-- Output: ~0.023 USDC (at current rates)
+- User deposits: 2.2 wNEAR
+- Platform fee: 0.0033 wNEAR (15 bps)
+- Net input: 2.1967 wNEAR
+- Output: ~5.64 USDC (at current rates)
+
+## Minimum Transaction Amount
+
+**Limit:** $5 USD minimum
+**Method:** Real-time price validation via TokenPriceService
+**Price Source:** Defuse token API (https://api-mng-console.chaindefuser.com/api/tokens)
+**Cache:** 1 minute TTL
+**Fallback:** Hardcoded approximate prices if API fails
+**Status:** ✅ Implemented and tested
+
+**Error Response:**
+```json
+{
+  "success": false,
+  "error": {
+    "code": "AMOUNT_TOO_LOW",
+    "message": "Transaction amount ($0.03) is below minimum of $5.00"
+  }
+}
+```
 
 ## Project Structure
 ```
@@ -75,16 +122,22 @@
 ├── api/src/v2/
 │   ├── services/
 │   │   ├── OneClickService.ts    ✅ Fixed recipient + fees
-│   │   └── SwapService.ts        ✅ Working
+│   │   ├── SwapService.ts        ✅ With minimum validation
+│   │   └── TokenPriceService.ts  ✅ NEW - USD price fetching
 │   ├── controllers/
-│   │   └── SwapController.ts     ✅ Fixed status endpoint
+│   │   └── SwapController.ts     ✅ Proper error codes
 │   ├── routes/
 │   │   ├── index.ts              ✅ Working
 │   │   └── swap.routes.ts        ✅ Working
 │   ├── workers/
 │   │   ├── IntentMonitor.ts      ✅ Working
 │   │   └── index.ts              ✅ Working
-│   └── tests/                    ✅ 8 passing
+│   └── tests/                    ✅ 17 passing
+│       ├── OneClickService.test.ts      (2 tests)
+│       ├── SwapService.test.ts          (4 tests)
+│       ├── SwapController.test.ts       (3 tests)
+│       ├── TokenPriceService.test.ts    (7 tests) ✅ NEW
+│       └── integration.test.ts          (1 test)
 └── docs/v2.0/
     ├── STATE.md                  ✅ This file
     ├── PROGRESS.md               ✅ Updated
@@ -95,9 +148,9 @@
 ## Next Steps
 
 ### High Priority
-1. ⏳ Add minimum transaction validation ($5 USD minimum)
-2. Test with larger amounts to verify fee calculation
-3. Add fee breakdown to API response
+1. ⏳ Test with larger amounts ($10-50) to verify at scale
+2. Add fee breakdown to API response (platform fee + network fee separately)
+3. Add redundant price sources (CoinGecko, CoinMarketCap)
 
 ### Medium Priority
 4. Implement webhook notifications
@@ -123,12 +176,23 @@ Start worker:
 cd /root/agentfi-sdk/api && npm run worker
 ```
 
-Test swap:
+Test minimum validation (should fail):
 ```bash
 curl -X POST http://localhost:3000/v2/swap \
   -H "Content-Type: application/json" \
   -d '{
     "from": {"chain": "near", "token": "wNEAR", "amount": "10000000000000000000000"},
+    "to": {"chain": "near", "token": "USDC"},
+    "user": {"walletAddress": "test.near"}
+  }'
+```
+
+Test above minimum (should succeed):
+```bash
+curl -X POST http://localhost:3000/v2/swap \
+  -H "Content-Type: application/json" \
+  -d '{
+    "from": {"chain": "near", "token": "wNEAR", "amount": "2200000000000000000000000"},
     "to": {"chain": "near", "token": "USDC"},
     "user": {"walletAddress": "YOUR_WALLET"}
   }'
@@ -145,5 +209,7 @@ curl http://localhost:3000/v2/swap/{intentId} | jq
 ✅ Direct delivery: USDC goes straight to user wallet
 ✅ Fast execution: ~6 minutes from deposit to completion
 ✅ Platform fees: 15 bps successfully implemented
+✅ Minimum validation: $5 USD minimum enforced
 ✅ Monitoring: Worker detects completion automatically
 ✅ Status tracking: API returns complete swap details
+✅ Test coverage: 17 tests passing
