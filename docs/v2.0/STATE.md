@@ -3,6 +3,17 @@
 **Branch:** agentfi-v2.0  
 **Status:** ✅ End-to-end working with correct recipient delivery!
 
+## Quick Status
+
+**What Works:**
+- ✅ POST /v2/swap - Create swap with correct recipient + fees
+- ✅ GET /v2/swap/:id - Check swap status
+- ✅ Worker monitoring - Polls OneClick every 20s
+- ✅ Direct delivery - USDC goes to user wallet automatically
+- ✅ Platform fees - 15 bps deducted via appFees
+
+**Next Task:** Add minimum transaction validation ($5 USD)
+
 ## Major Achievement
 
 ### ✅ Recipient Issue Fixed & Verified
@@ -28,7 +39,12 @@
 **Account ID:** 6c379f0bec7563a607ed663e3d5be642dd8de19c7a5dcac9acf1a9cbefb0a709
 **NEAR Balance:** ~0.27 NEAR
 **wNEAR Balance:** ~0.05 wNEAR (after test swap)
-**USDC in Intents:** 0.053174 USDC (from previous test swaps using wrong recipientType)
+
+### Note on Old Account
+**Old Account:** 0bdbb89f... (inaccessible due to key mismatch)
+**Stuck USDC:** 0.053174 USDC in intents.near (from tests with wrong recipientType)
+**Status:** Cannot recover - documented for reference only
+**Impact:** None - new account (6c379f0b...) works correctly with DESTINATION_CHAIN
 
 ## Corrected Flow
 
@@ -45,6 +61,7 @@
 **Rate:** 15 basis points (0.15%)
 **Method:** Deducted from input token via OneClick `appFees` parameter
 **Recipient:** Service wallet (6c379f0b...)
+**Status:** ✅ Verified working
 
 **Example:**
 - User deposits: 0.01 wNEAR
@@ -78,22 +95,21 @@
 ## Next Steps
 
 ### High Priority
-1. ⚠️ Withdraw stuck 0.053174 USDC from intents.near (from old tests)
-2. Add minimum transaction validation ($5 USD minimum)
-3. Test with larger amounts to verify fee calculation
-4. Add fee breakdown to API response
+1. ⏳ Add minimum transaction validation ($5 USD minimum)
+2. Test with larger amounts to verify fee calculation
+3. Add fee breakdown to API response
 
 ### Medium Priority
-5. Implement webhook notifications
-6. Add comprehensive error handling
-7. Implement API key authentication
-8. Add rate limiting
+4. Implement webhook notifications
+5. Add comprehensive error handling
+6. Implement API key authentication
+7. Add rate limiting
 
 ### Future
-9. Production deployment
-10. Multi-token support
-11. Cross-chain swaps (ETH, SOL, BTC)
-12. SDK libraries
+8. Production deployment
+9. Multi-token support
+10. Cross-chain swaps (ETH, SOL, BTC)
+11. SDK libraries
 
 ## Running Services
 

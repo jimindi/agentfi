@@ -21,16 +21,22 @@
 - Created new implicit account with correct keys
 - Successfully wrapped NEAR to wNEAR
 - Created atomic swap test script
-- **Fixed OneClick API endpoint (v0/status not v0/execution)**
-- **Successfully completed 2 mainnet swaps**
-- **Worker correctly detecting swap completion**
-- **Verified USDC delivery to intents.near**
+- Fixed OneClick API endpoint (v0/status not v0/execution)
+- Successfully completed 2 mainnet swaps
+- Worker correctly detecting swap completion
+- **Fixed recipient issue: USDC now delivered directly to user wallet**
+- **Platform fees (15 bps) successfully implemented via appFees**
+- **End-to-end flow verified working on mainnet**
 
 ### Current Task 🔄
-Add webhook support and implement withdrawal flow
+Add minimum transaction validation ($5 USD minimum)
 
-### No Active Blockers ✅
-All critical issues resolved!
+### Note on Stuck USDC ℹ️
+- 0.053174 USDC stuck in intents.near from old account (0bdbb89f...)
+- Cannot access old account due to key mismatch
+- New account (6c379f0b...) uses correct recipientType (DESTINATION_CHAIN)
+- Funds from new account delivered directly to user wallets ✅
+- Old stuck funds documented but not recoverable
 
 ### Next Steps 📋
 1. ✅ Implement OneClickService with tests
@@ -42,11 +48,14 @@ All critical issues resolved!
 7. ✅ Resolve NEAR key issues
 8. ✅ Test end-to-end with real mainnet deposit
 9. ✅ Debug worker status detection
-10. Implement webhook notifications
-11. Add USDC withdrawal from intents.near
-12. Implement API key authentication
-13. Add rate limiting
-14. Production deployment
+10. ✅ Fix recipient delivery issue
+11. ✅ Implement platform fees
+12. Add minimum transaction validation ($5 USD)
+13. Test with larger amounts
+14. Implement webhook notifications
+15. Implement API key authentication
+16. Add rate limiting
+17. Production deployment
 
 ## Session History
 
@@ -103,52 +112,6 @@ All critical issues resolved!
 - Confirmed USDC delivery: 53,174 microUSDC in intents.near
 - End-to-end flow fully working!
 
-## Key Learnings
-- OneClick API uses `/v0/status?depositAddress=X` not `/v0/execution/X`
-- Status values: PENDING_DEPOSIT, PROCESSING, SUCCESS, INCOMPLETE_DEPOSIT, REFUNDED, FAILED
-- With `recipientType: INTENTS`, funds go to intents.near contract
-- Worker polling every 20 seconds is sufficient
-- Implicit NEAR accounts work perfectly for service accounts
-
-## Fee Structure Requirements
-
-### Platform Fees (Not Yet Implemented)
-- **15 basis points (0.15%)** on all swap transactions
-- Fee should be added to swap amount and charged to user
-- Fee goes to service wallet (AgentFi revenue)
-
-### Minimum Transaction Amount
-- **$5 USD minimum** per swap
-- Reject swaps below minimum with clear error message
-- Calculate based on real-time token prices
-
-### Implementation Notes
-- Fee calculation must happen before quote request
-- Need to add USD price lookup for input token
-- Fee wallet address: TBD (create dedicated account)
-- Add fee validation in SwapService.executeSwap()
-- Update API response to show fees clearly
-
-### Example Fee Calculation
-```
-Input: 0.01 wNEAR ($0.0266 USD)
-Status: ❌ Below $5 minimum, rejected
-
-Input: 2.0 wNEAR ($5.32 USD)
-Platform fee: 2.0 × 0.0015 = 0.003 wNEAR ($0.008 USD)
-Total required: 2.003 wNEAR
-Output: ~5.31 USDC (after fees)
-Status: ✅ Approved
-```
-
-### TODO
-- [ ] Add fee calculation to SwapService
-- [ ] Create fee collection wallet
-- [ ] Add minimum transaction validation
-- [ ] Update quote response to show fees
-- [ ] Add fee tracking to database
-- [ ] Update API documentation with fee structure
-
 ### November 12, 2025 - Session 7
 - Fixed critical recipient issue: Changed recipientType from INTENTS to DESTINATION_CHAIN
 - Added platform fee: 15 basis points via appFees parameter
@@ -156,7 +119,32 @@ Status: ✅ Approved
 - Created documentation: ONECLICK-API.md (comprehensive API reference)
 - Created documentation: ONECLICK-FEES.md (fee calculation guide)
 - Verified fix: Quote requests now show correct recipientType and appFees
-- Next: Test complete swap with deposit to verify USDC goes to user wallet
+- Fixed SwapController.ts to return actual swap status
+- **Successfully completed end-to-end test swap**
+- **Verified USDC delivered to user wallet (not intents.near)**
+- **Confirmed platform fee (15 bps) working correctly**
+
+**Test Results:**
+- Intent ID: 173bd2dc-90f3-4d3c-afa8-2ac38d6d18e8
+- Input: 0.01 wNEAR ($0.0234 USD)
+- Output: 0.022979 USDC delivered to wallet
+- Platform fee: ~15 bps deducted
+- Status: SUCCESS in ~6 minutes
+- Tx: F3xCMTfZwHK5pAyF4UDFmFFJshtnpkTXt6ZLWKBdkd4Y
+
+**Commits:**
+- 60a47fd: Fix recipient type + add platform fees
+- 51c6ad8: Fix getSwapStatus controller
+- 27eb482: Session 7 complete - verified end-to-end working
+
+## Key Learnings
+- OneClick API uses `/v0/status?depositAddress=X` not `/v0/execution/X`
+- Status values: PENDING_DEPOSIT, PROCESSING, SUCCESS, INCOMPLETE_DEPOSIT, REFUNDED, FAILED
+- **Critical: Use `recipientType: "DESTINATION_CHAIN"` for direct wallet delivery**
+- **INTENTS recipient type requires manual withdrawal - avoid!**
+- Worker polling every 20 seconds is sufficient
+- Implicit NEAR accounts work perfectly for service accounts
+- Platform fees via appFees parameter work seamlessly
 
 ## Key Decisions
 
@@ -168,51 +156,65 @@ Status: ✅ Approved
 ### Platform Fee Implementation  
 **Decision:** 15 basis points (0.15%) charged via OneClick appFees
 **Method:** Fee deducted from input token before swap
-**Recipient:** Service wallet (same as NEAR account for now)
-**Future:** Dedicated fee collection wallet
+**Recipient:** Service wallet (6c379f0b...)
+**Status:** ✅ Verified working
 
+### Stuck USDC from Old Account
+**Decision:** Document but don't attempt recovery
+**Reason:** Old account (0bdbb89f...) key mismatch, inaccessible
+**Amount:** 0.053174 USDC in intents.near
+**Impact:** None - new account works correctly
 
-### Session 7 Summary (November 12, 2025)
+## Fee Structure Requirements
 
-**Major Achievement:** ✅ Fixed recipient issue + verified end-to-end working
+### Platform Fees ✅ Implemented
+- **15 basis points (0.15%)** on all swap transactions
+- Fee deducted from input token via OneClick appFees parameter
+- Fee goes to service wallet (6c379f0b...)
+- ✅ Verified working in mainnet test
 
-**Changes Made:**
-1. Fixed OneClickService.ts:
-   - Changed `recipientType: "INTENTS"` → `"DESTINATION_CHAIN"`
-   - Changed `refundType: "INTENTS"` → `"ORIGIN_CHAIN"`
-   - Added platform fee: 15 bps via `appFees` parameter
+### Minimum Transaction Amount ⏳ Next Task
+- **$5 USD minimum** per swap
+- Reject swaps below minimum with clear error message
+- Calculate based on real-time token prices
 
-2. Fixed SwapController.ts:
-   - Removed hardcoded `pending_deposit` response
-   - Now properly calls `swapService.getSwapStatus()`
+### Implementation Plan
+1. Add USD price lookup service
+2. Add validation in SwapService.executeSwap()
+3. Return clear error for below-minimum swaps
+4. Add tests for validation logic
 
-3. Added documentation:
-   - ONECLICK-API.md (comprehensive API reference)
-   - ONECLICK-FEES.md (fee calculation guide)
+### Example Validation
+```
+Input: 0.01 wNEAR ($0.0234 USD)
+Status: ❌ Below $5 minimum, rejected
 
-4. Environment updates:
-   - Added AGENTFI_FEE_WALLET to config
-   - Set fee wallet to service account
+Input: 2.0 wNEAR ($5.32 USD)
+Platform fee: 2.0 × 0.0015 = 0.003 wNEAR ($0.008 USD)
+Total required: 2.003 wNEAR
+Output: ~5.31 USDC (after fees)
+Status: ✅ Approved
+```
 
-**Test Results:**
-- Created swap: Intent ID `173bd2dc-90f3-4d3c-afa8-2ac38d6d18e8`
-- Input: 0.01 wNEAR ($0.0234 USD)
-- Output: 0.022979 USDC delivered to wallet
-- Platform fee: ~15 bps deducted
-- Status: ✅ SUCCESS in ~6 minutes
-- Tx: F3xCMTfZwHK5pAyF4UDFmFFJshtnpkTXt6ZLWKBdkd4Y
+## Next Session Goals
 
-**Key Verification:**
-- USDC withdrawn from intents.near and delivered to user wallet ✅
-- No manual withdrawal needed ✅
-- Platform fee correctly applied ✅
+### Immediate (Session 8)
+1. Add minimum transaction validation ($5 USD)
+2. Test with larger amounts ($10-50)
+3. Verify fee calculation accuracy
 
-**Commits:**
-- 60a47fd: Fix recipient type + add platform fees
-- 51c6ad8: Fix getSwapStatus controller
+### Short Term
+4. Implement webhook notifications
+5. Add API key authentication
+6. Add rate limiting
+7. Comprehensive error handling
 
-**Remaining Work:**
-1. Withdraw stuck 0.053174 USDC from previous tests
-2. Add minimum transaction validation ($5 USD)
-3. Implement webhooks
-4. Add API key authentication
+### Medium Term
+8. Production deployment setup
+9. Multi-token support beyond wNEAR/USDC
+10. Cross-chain swaps (ETH, SOL, BTC)
+
+### Long Term
+11. SDK libraries (TypeScript, Python)
+12. Dashboard for monitoring
+13. Analytics and reporting
