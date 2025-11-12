@@ -6,6 +6,7 @@ const prisma = new PrismaClient();
 
 class IntentMonitor {
   private intervalId?: NodeJS.Timeout;
+  private readonly EXPIRATION_HOURS = 24;
 
   start() {
     console.log('Starting Intent Monitor worker...');
@@ -13,10 +14,18 @@ class IntentMonitor {
     // Check immediately on start
     this.checkPendingIntents();
     
+    // Check for expired intents immediately
+    this.cleanExpiredIntents();
+    
     // Then check every 20 seconds
     this.intervalId = setInterval(() => {
       this.checkPendingIntents();
     }, 20000);
+
+    // Clean expired intents every hour
+    setInterval(() => {
+      this.cleanExpiredIntents();
+    }, 60 * 60 * 1000);
   }
 
   stop() {
@@ -26,8 +35,45 @@ class IntentMonitor {
     }
   }
 
+  private async cleanExpiredIntents() {
+    try {
+      const expirationTime = new Date(Date.now() - this.EXPIRATION_HOURS * 60 * 60 * 1000);
+      
+      const expiredIntents = await prisma.intent.findMany({
+        where: {
+          status: 'pending_deposit',
+          createdAt: {
+            lt: expirationTime
+          }
+        }
+      });
+
+      if (expiredIntents.length > 0) {
+        console.log(`Found ${expiredIntents.length} expired intents, marking as expired`);
+        
+        const result = await prisma.intent.updateMany({
+          where: {
+            status: 'pending_deposit',
+            createdAt: {
+              lt: expirationTime
+            }
+          },
+          data: {
+            status: 'expired',
+            errorMessage: `Intent expired after ${this.EXPIRATION_HOURS} hours without deposit`
+          }
+        });
+
+        console.log(`Marked ${result.count} intents as expired`);
+      }
+    } catch (error) {
+      console.error('Error cleaning expired intents:', error);
+    }
+  }
+
   private async checkPendingIntents() {
     try {
+      // Only check pending_deposit and executing (skip expired)
       const intents = await prisma.intent.findMany({
         where: {
           status: {
@@ -36,7 +82,9 @@ class IntentMonitor {
         }
       });
 
-      console.log(`Found ${intents.length} pending intents to check`);
+      if (intents.length > 0) {
+        console.log(`Found ${intents.length} pending intents to check`);
+      }
 
       for (const intent of intents) {
         await this.checkIntent(intent);
@@ -74,7 +122,7 @@ class IntentMonitor {
         });
         
         console.log(`Intent ${intent.id} completed!`);
-
+        
         // Send webhook if URL provided
         await this.sendWebhook(updatedIntent, 'completed');
 
@@ -89,12 +137,22 @@ class IntentMonitor {
         });
         
         console.log(`Intent ${intent.id} failed`);
-
+        
         // Send webhook if URL provided
         await this.sendWebhook(updatedIntent, 'failed');
 
+      } else if (status.status === 'PROCESSING') {
+        // Update to executing if currently pending_deposit
+        if (intent.status === 'pending_deposit') {
+          await prisma.intent.update({
+            where: { id: intent.id },
+            data: { status: 'executing' }
+          });
+          console.log(`Intent ${intent.id} now executing`);
+        }
       } else {
-        console.log(`Intent ${intent.id} still ${status.status}`);
+        // Still pending deposit - only log if verbose
+        // console.log(`Intent ${intent.id} still ${status.status}`);
       }
     } catch (error) {
       console.error(`Error checking intent ${intent.id}:`, error);
@@ -105,8 +163,7 @@ class IntentMonitor {
     const webhookUrl = intent.webhookUrl;
     
     if (!webhookUrl) {
-      console.log(`No webhook URL for intent ${intent.id}`);
-      return;
+      return; // No webhook URL, skip silently
     }
 
     console.log(`Sending ${eventType} webhook for intent ${intent.id} to ${webhookUrl}`);
