@@ -13,7 +13,6 @@ export class SwapController {
   async executeSwap(req: Request, res: Response): Promise<void> {
     try {
       const swapRequest: SwapRequest = req.body;
-
       const result = await this.swapService.executeSwap(swapRequest);
 
       res.status(200).json({
@@ -34,20 +33,17 @@ export class SwapController {
   async getSwapStatus(req: Request, res: Response): Promise<void> {
     try {
       const { intentId } = req.params;
+      const status = await this.swapService.getSwapStatus(intentId);
 
-      // TODO: Implement status lookup
       res.status(200).json({
         success: true,
-        data: {
-          intentId,
-          status: 'pending_deposit'
-        }
+        data: status
       });
     } catch (error: any) {
-      res.status(500).json({
+      res.status(404).json({
         success: false,
         error: {
-          code: 'STATUS_FAILED',
+          code: 'INTENT_NOT_FOUND',
           message: error.message
         }
       });
