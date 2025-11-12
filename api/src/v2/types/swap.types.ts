@@ -19,4 +19,12 @@ export interface SwapResult {
   depositAddress: string;
   estimatedOutput: string;
   estimatedTimeSeconds: number;
+  fees: {
+    platformFeeBps: number;
+    platformFeeAmount: string;
+    platformFeeFormatted: string;
+    networkFeeEstimate: string;
+    networkFeeFormatted: string;
+    totalFeeFormatted: string;
+  };
 }

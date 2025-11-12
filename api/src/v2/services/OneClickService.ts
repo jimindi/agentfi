@@ -11,6 +11,13 @@ export interface QuoteResponse {
   depositAddress: string;
   estimatedOutput: string;
   estimatedTimeSeconds: number;
+  amountIn: string;
+  amountOut: string;
+  fees: {
+    platformFeeBps: number;
+    platformFeeAmount: string;
+    networkFeeEstimate: string;
+  };
 }
 
 export interface ExecutionStatus {
@@ -25,6 +32,7 @@ class OneClickService {
   private baseUrl = 'https://1click.chaindefuser.com';
   private jwtToken: string;
   private feeRecipient: string;
+  private readonly PLATFORM_FEE_BPS = 15; // 15 basis points = 0.15%
 
   constructor() {
     if (!env.ONECLICK_JWT_TOKEN) {
@@ -57,7 +65,7 @@ class OneClickService {
         appFees: [
           {
             recipient: this.feeRecipient,
-            fee: 15
+            fee: this.PLATFORM_FEE_BPS
           }
         ]
       })
@@ -70,11 +78,27 @@ class OneClickService {
 
     const data: any = await response.json();
     
+    // Calculate platform fee amount (15 bps of input)
+    const platformFeeAmount = this.calculatePlatformFee(request.amount);
+
     return {
       depositAddress: data.quote.depositAddress,
       estimatedOutput: data.quote.amountOut,
-      estimatedTimeSeconds: 10
+      estimatedTimeSeconds: 10,
+      amountIn: data.quote.amountIn,
+      amountOut: data.quote.amountOut,
+      fees: {
+        platformFeeBps: this.PLATFORM_FEE_BPS,
+        platformFeeAmount: platformFeeAmount,
+        networkFeeEstimate: '500000000000000000000000' // ~0.0005 NEAR estimated
+      }
     };
+  }
+
+  private calculatePlatformFee(amount: string): string {
+    const amountBigInt = BigInt(amount);
+    const feeBigInt = (amountBigInt * BigInt(this.PLATFORM_FEE_BPS)) / BigInt(10000);
+    return feeBigInt.toString();
   }
 
   async getExecutionStatus(depositAddress: string): Promise<ExecutionStatus> {

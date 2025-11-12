@@ -47,11 +47,18 @@ describe('SwapService', () => {
     });
 
     it('should accept swap above $5 minimum', async () => {
-      // Mock OneClick response
+      // Mock OneClick response with fee structure
       vi.mocked(OneClickService.getQuote).mockResolvedValue({
         depositAddress: 'abc123',
         estimatedOutput: '5000000',
-        estimatedTimeSeconds: 60
+        estimatedTimeSeconds: 60,
+        amountIn: '2200000000000000000000000',
+        amountOut: '5000000',
+        fees: {
+          platformFeeBps: 15,
+          platformFeeAmount: '3300000000000000000000',
+          networkFeeEstimate: '500000000000000000000000'
+        }
       });
 
       // Mock Prisma response
@@ -76,9 +83,12 @@ describe('SwapService', () => {
       };
 
       const result = await swapService.executeSwap(request);
-
+      
       expect(result.intentId).toBe('intent-123');
       expect(result.status).toBe('pending_deposit');
+      expect(result.fees).toBeDefined();
+      expect(result.fees.platformFeeBps).toBe(15);
+      expect(result.fees.platformFeeFormatted).toContain('wNEAR');
       expect(OneClickService.getQuote).toHaveBeenCalled();
     });
   });
@@ -102,7 +112,7 @@ describe('SwapService', () => {
       vi.mocked(mockPrisma.intent.findUnique).mockResolvedValue(mockIntent as any);
 
       const status = await swapService.getSwapStatus('intent-123');
-
+      
       expect(status.intentId).toBe('intent-123');
       expect(status.status).toBe('completed');
       expect(status.txHash).toBe('tx123');

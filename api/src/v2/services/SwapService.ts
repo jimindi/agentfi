@@ -25,6 +25,12 @@ export class SwapService {
       userWallet: request.user.walletAddress
     });
 
+    // Format fees for display
+    const platformFeeFormatted = this.formatAmount(quote.fees.platformFeeAmount, 24);
+    const networkFeeFormatted = this.formatAmount(quote.fees.networkFeeEstimate, 24);
+    const totalFee = BigInt(quote.fees.platformFeeAmount) + BigInt(quote.fees.networkFeeEstimate);
+    const totalFeeFormatted = this.formatAmount(totalFee.toString(), 24);
+
     // Store in database
     const intent = await this.prisma.intent.create({
       data: {
@@ -43,7 +49,12 @@ export class SwapService {
         status: 'pending_deposit',
         metadata: {
           depositAddress: quote.depositAddress,
-          estimatedOutput: quote.estimatedOutput
+          estimatedOutput: quote.estimatedOutput,
+          fees: {
+            platformFeeBps: quote.fees.platformFeeBps,
+            platformFeeAmount: quote.fees.platformFeeAmount,
+            networkFeeEstimate: quote.fees.networkFeeEstimate
+          }
         }
       }
     });
@@ -53,7 +64,15 @@ export class SwapService {
       status: 'pending_deposit',
       depositAddress: quote.depositAddress,
       estimatedOutput: quote.estimatedOutput,
-      estimatedTimeSeconds: quote.estimatedTimeSeconds
+      estimatedTimeSeconds: quote.estimatedTimeSeconds,
+      fees: {
+        platformFeeBps: quote.fees.platformFeeBps,
+        platformFeeAmount: quote.fees.platformFeeAmount,
+        platformFeeFormatted: `${platformFeeFormatted} wNEAR`,
+        networkFeeEstimate: quote.fees.networkFeeEstimate,
+        networkFeeFormatted: `${networkFeeFormatted} NEAR`,
+        totalFeeFormatted: `${totalFeeFormatted} NEAR (approx)`
+      }
     };
   }
 
@@ -83,6 +102,11 @@ export class SwapService {
       createdAt: intent.createdAt,
       completedAt: intent.completedAt
     };
+  }
+
+  private formatAmount(amount: string, decimals: number): string {
+    const value = Number(amount) / Math.pow(10, decimals);
+    return value.toFixed(6);
   }
 
   private async validateMinimumAmount(request: SwapRequest): Promise<void> {
