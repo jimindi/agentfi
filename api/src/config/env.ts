@@ -17,6 +17,7 @@ const envSchema = z.object({
   API_BASE_URL: z.string().url(),
   ONECLICK_JWT_TOKEN: z.string().optional(),
   PLATFORM_FEE_BPS: z.string().default('15'),
+  AGENTFI_FEE_WALLET: z.string().min(1),
 });
 
 export const env = envSchema.parse(process.env);

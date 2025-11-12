@@ -24,9 +24,14 @@ export interface ExecutionStatus {
 class OneClickService {
   private baseUrl = 'https://1click.chaindefuser.com';
   private jwtToken: string;
+  private feeRecipient: string;
 
   constructor() {
+    if (!env.ONECLICK_JWT_TOKEN) {
+      throw new Error('ONECLICK_JWT_TOKEN is required');
+    }
     this.jwtToken = env.ONECLICK_JWT_TOKEN;
+    this.feeRecipient = env.AGENTFI_FEE_WALLET;
   }
 
   async getQuote(request: QuoteRequest): Promise<QuoteResponse> {
@@ -44,11 +49,17 @@ class OneClickService {
         destinationAsset: request.toAsset,
         amount: request.amount,
         recipient: request.userWallet,
-        recipientType: 'INTENTS',
+        recipientType: 'DESTINATION_CHAIN',
         refundTo: request.userWallet,
-        refundType: 'INTENTS',
+        refundType: 'ORIGIN_CHAIN',
         slippageTolerance: 100,
-        deadline: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString()
+        deadline: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
+        appFees: [
+          {
+            recipient: this.feeRecipient,
+            fee: 15
+          }
+        ]
       })
     });
 

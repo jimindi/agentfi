@@ -148,3 +148,26 @@ Status: ✅ Approved
 - [ ] Update quote response to show fees
 - [ ] Add fee tracking to database
 - [ ] Update API documentation with fee structure
+
+### November 12, 2025 - Session 7
+- Fixed critical recipient issue: Changed recipientType from INTENTS to DESTINATION_CHAIN
+- Added platform fee: 15 basis points via appFees parameter
+- Updated environment: Added AGENTFI_FEE_WALLET to config
+- Created documentation: ONECLICK-API.md (comprehensive API reference)
+- Created documentation: ONECLICK-FEES.md (fee calculation guide)
+- Verified fix: Quote requests now show correct recipientType and appFees
+- Next: Test complete swap with deposit to verify USDC goes to user wallet
+
+## Key Decisions
+
+### Recipient Type Fix
+**Problem:** Funds were stuck in intents.near contract requiring manual withdrawal
+**Solution:** Use `recipientType: "DESTINATION_CHAIN"` for direct delivery to user wallet
+**Impact:** Eliminates withdrawal step, better UX, true non-custodial flow
+
+### Platform Fee Implementation  
+**Decision:** 15 basis points (0.15%) charged via OneClick appFees
+**Method:** Fee deducted from input token before swap
+**Recipient:** Service wallet (same as NEAR account for now)
+**Future:** Dedicated fee collection wallet
+
