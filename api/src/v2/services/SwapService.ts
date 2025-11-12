@@ -46,6 +46,7 @@ export class SwapService {
         toChain: request.to.chain,
         toToken: request.to.token,
         userWalletAddress: request.user.walletAddress,
+        webhookUrl: request.options?.webhookUrl || null,
         status: 'pending_deposit',
         metadata: {
           depositAddress: quote.depositAddress,

@@ -1,5 +1,6 @@
 import { PrismaClient } from '@prisma/client';
 import oneClickService from '../services/OneClickService';
+import { WebhookService } from '../services/WebhookService';
 
 const prisma = new PrismaClient();
 
@@ -61,7 +62,8 @@ class IntentMonitor {
       console.log(`Status for ${intent.id}: ${status.status}`);
 
       if (status.status === 'SUCCESS') {
-        await prisma.intent.update({
+        // Update database
+        const updatedIntent = await prisma.intent.update({
           where: { id: intent.id },
           data: {
             status: 'completed',
@@ -72,8 +74,13 @@ class IntentMonitor {
         });
         
         console.log(`Intent ${intent.id} completed!`);
+
+        // Send webhook if URL provided
+        await this.sendWebhook(updatedIntent, 'completed');
+
       } else if (status.status === 'FAILED') {
-        await prisma.intent.update({
+        // Update database
+        const updatedIntent = await prisma.intent.update({
           where: { id: intent.id },
           data: {
             status: 'failed',
@@ -82,11 +89,42 @@ class IntentMonitor {
         });
         
         console.log(`Intent ${intent.id} failed`);
+
+        // Send webhook if URL provided
+        await this.sendWebhook(updatedIntent, 'failed');
+
       } else {
         console.log(`Intent ${intent.id} still ${status.status}`);
       }
     } catch (error) {
       console.error(`Error checking intent ${intent.id}:`, error);
+    }
+  }
+
+  private async sendWebhook(intent: any, eventType: 'completed' | 'failed') {
+    const webhookUrl = intent.webhookUrl;
+    
+    if (!webhookUrl) {
+      console.log(`No webhook URL for intent ${intent.id}`);
+      return;
+    }
+
+    console.log(`Sending ${eventType} webhook for intent ${intent.id} to ${webhookUrl}`);
+
+    try {
+      const payload = eventType === 'completed'
+        ? WebhookService.createSwapCompletedPayload(intent)
+        : WebhookService.createSwapFailedPayload(intent);
+
+      const success = await WebhookService.sendWebhook(webhookUrl, payload);
+
+      if (success) {
+        console.log(`Webhook delivered successfully for intent ${intent.id}`);
+      } else {
+        console.error(`Webhook delivery failed for intent ${intent.id}`);
+      }
+    } catch (error) {
+      console.error(`Error sending webhook for intent ${intent.id}:`, error);
     }
   }
 }

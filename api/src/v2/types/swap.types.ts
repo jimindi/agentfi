@@ -11,6 +11,9 @@ export interface SwapRequest {
   user: {
     walletAddress: string;
   };
+  options?: {
+    webhookUrl?: string;
+  };
 }
 
 export interface SwapResult {

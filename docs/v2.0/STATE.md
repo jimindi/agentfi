@@ -1,53 +1,68 @@
 # Project State - Quick Reference
 **Last Updated:** November 12, 2025  
 **Branch:** agentfi-v2.0  
-**Status:** ✅ Fee breakdown implemented! Ready for production features.
+**Status:** ✅ Webhook notifications implemented! Production-ready feature complete.
 
 ## Quick Status
 
 **What Works:**
-- ✅ POST /v2/swap - Create swap with correct recipient + fees + **fee breakdown**
+- ✅ POST /v2/swap - Create swap with correct recipient + fees + fee breakdown
 - ✅ GET /v2/swap/:id - Check swap status
 - ✅ Worker monitoring - Polls OneClick every 20s
 - ✅ Direct delivery - USDC goes to user wallet automatically
 - ✅ Platform fees - 15 bps deducted via appFees
 - ✅ Minimum validation - $5 USD minimum enforced
-- ✅ **Fee transparency - Platform fee + network fee shown separately**
+- ✅ Fee transparency - Platform fee + network fee shown separately
+- ✅ **Webhook notifications - Real-time swap completion alerts**
 
-**Next Task:** Add redundant price sources (CoinGecko, CoinMarketCap)
+**Next Task:** Implement API key authentication
 
 ## Latest Achievement
 
-### ✅ Fee Breakdown Added to API Response
+### ✅ Webhook Notifications Implemented
 
-**Feature:** Transparent fee display showing platform and network fees separately
+**Feature:** Real-time HTTP callbacks when swaps complete or fail
 
 **Implementation:**
-- Enhanced OneClickService to capture fee details from quote
-- Added fee calculation in SwapService (15 bps platform fee)
-- Formatted fees for easy reading (e.g., "0.003300 wNEAR")
-- Updated all tests to include new fee structure
+- WebhookService with HMAC-SHA256 signature generation
+- Retry logic (3 attempts, 5 second delay)
+- IntentMonitor sends webhooks on completion/failure
+- Support for optional webhookUrl in swap requests
+- Complete documentation with examples
 
-**Response Example:**
+**Test Results (November 12, 2025):**
+- All 26 tests passing (9 new webhook tests)
+- Signature verification working
+- Retry logic tested
+- Delivery timeout handling verified
+
+**Webhook Features:**
 ```json
 {
-  "fees": {
-    "platformFeeBps": 15,
-    "platformFeeAmount": "3300000000000000000000",
-    "platformFeeFormatted": "0.003300 wNEAR",
-    "networkFeeEstimate": "500000000000000000000000",
-    "networkFeeFormatted": "0.500000 NEAR",
-    "totalFeeFormatted": "0.503300 NEAR (approx)"
+  "event": "swap.completed",
+  "eventId": "evt_123_abc",
+  "timestamp": "2025-11-12T10:30:00Z",
+  "data": {
+    "intentId": "...",
+    "status": "completed",
+    "txHash": "...",
+    "actualOutput": "..."
   }
 }
 ```
 
-**Test Results (November 12, 2025):**
-- All 17 tests passing
-- API response includes complete fee breakdown
-- Calculations verified: 15 bps of 2.2 wNEAR = 0.0033 wNEAR ✅
+**Security:**
+- HMAC-SHA256 signatures
+- Header: `X-AgentFi-Signature: sha256=...`
+- Constant-time comparison
+- 10-second timeout per attempt
 
 ## Previous Achievements
+
+### ✅ Fee Breakdown
+- Transparent platform + network fee display
+- Human-readable formatted amounts
+- Complete fee transparency
 
 ### ✅ Minimum Transaction Validation ($5 USD)
 - TokenPriceService for real-time USD prices
@@ -80,15 +95,17 @@
 
 ## Complete Flow
 
-1. Client calls `POST /v2/swap` with swap parameters
+1. Client calls `POST /v2/swap` with swap parameters + optional webhookUrl
 2. API validates minimum amount ($5 USD) ✅
 3. API requests quote with `recipientType: DESTINATION_CHAIN` + `appFees: 15 bps`
-4. **API returns deposit address + transparent fee breakdown** ✅
-5. Client transfers tokens to unique depositAddress
-6. OneClick detects deposit, coordinates with solvers
-7. Solvers execute swap and deliver USDC directly to user's wallet ✅
-8. Worker polls status, updates database when SUCCESS
-9. Client checks status: `GET /v2/swap/:id` returns complete data
+4. API stores webhookUrl in database ✅
+5. API returns deposit address + transparent fee breakdown ✅
+6. Client transfers tokens to unique depositAddress
+7. OneClick detects deposit, coordinates with solvers
+8. Solvers execute swap and deliver USDC directly to user's wallet ✅
+9. Worker polls status, updates database when SUCCESS
+10. **Worker sends webhook notification with swap details** ✅
+11. Client checks status: `GET /v2/swap/:id` returns complete data
 
 ## Platform Fees
 
@@ -97,18 +114,6 @@
 **Recipient:** Service wallet (6c379f0b...)
 **Display:** Shown separately in API response ✅
 **Status:** ✅ Verified working with transparent breakdown
-
-**Example Fee Breakdown:**
-```json
-{
-  "platformFeeBps": 15,
-  "platformFeeAmount": "3300000000000000000000",
-  "platformFeeFormatted": "0.003300 wNEAR",
-  "networkFeeEstimate": "500000000000000000000000",
-  "networkFeeFormatted": "0.500000 NEAR",
-  "totalFeeFormatted": "0.503300 NEAR (approx)"
-}
-```
 
 ## Minimum Transaction Amount
 
@@ -119,53 +124,66 @@
 **Fallback:** Hardcoded approximate prices
 **Status:** ✅ Implemented and tested
 
+## Webhooks
+
+**URL:** Provided in `options.webhookUrl` field
+**Events:** swap.completed, swap.failed
+**Signature:** HMAC-SHA256 (sha256=...)
+**Retries:** 3 attempts, 5 second delay
+**Timeout:** 10 seconds per attempt
+**Status:** ✅ Implemented and tested
+**Documentation:** docs/v2.0/WEBHOOKS.md
+
 ## Project Structure
 ```
 /root/agentfi-sdk/
 ├── api/src/v2/
 │   ├── services/
-│   │   ├── OneClickService.ts    ✅ With fee capture
-│   │   ├── SwapService.ts        ✅ With fee formatting
-│   │   └── TokenPriceService.ts  ✅ USD price fetching
+│   │   ├── OneClickService.ts       ✅ With fee capture
+│   │   ├── SwapService.ts           ✅ With fee formatting + webhook support
+│   │   ├── TokenPriceService.ts     ✅ USD price fetching
+│   │   └── WebhookService.ts        ✅ NEW - Webhook delivery
 │   ├── controllers/
-│   │   └── SwapController.ts     ✅ Returns fee breakdown
+│   │   └── SwapController.ts        ✅ Returns fee breakdown
 │   ├── types/
-│   │   └── swap.types.ts         ✅ Updated with fee structure
+│   │   └── swap.types.ts            ✅ Updated with webhookUrl option
 │   ├── routes/
-│   │   ├── index.ts              ✅ Working
-│   │   └── swap.routes.ts        ✅ Working
+│   │   ├── index.ts                 ✅ Working
+│   │   └── swap.routes.ts           ✅ Working
 │   ├── workers/
-│   │   ├── IntentMonitor.ts      ✅ Working
-│   │   └── index.ts              ✅ Working
-│   └── tests/                    ✅ 17 passing
-│       ├── OneClickService.test.ts      (2 tests)
-│       ├── SwapService.test.ts          (4 tests) ✅ Updated
-│       ├── SwapController.test.ts       (3 tests)
-│       ├── TokenPriceService.test.ts    (7 tests)
-│       └── integration.test.ts          (1 test)
+│   │   ├── IntentMonitor.ts         ✅ With webhook delivery
+│   │   └── index.ts                 ✅ Working
+│   └── tests/                       ✅ 26 passing
+│       ├── OneClickService.test.ts       (2 tests)
+│       ├── SwapService.test.ts           (4 tests)
+│       ├── SwapController.test.ts        (3 tests)
+│       ├── TokenPriceService.test.ts     (7 tests)
+│       ├── WebhookService.test.ts        (9 tests) ✅ NEW
+│       └── integration.test.ts           (1 test)
 └── docs/v2.0/
-    ├── STATE.md                  ✅ This file
-    ├── PROGRESS.md               ✅ Updated
-    ├── ONECLICK-API.md           ✅ Complete reference
-    └── ONECLICK-FEES.md          ✅ Fee guide
+    ├── STATE.md                     ✅ This file
+    ├── PROGRESS.md                  ✅ Updated
+    ├── WEBHOOKS.md                  ✅ NEW - Complete guide
+    ├── ONECLICK-API.md              ✅ Complete reference
+    └── ONECLICK-FEES.md             ✅ Fee guide
 ```
 
 ## Next Steps
 
 ### High Priority
-1. Add redundant price sources (CoinGecko, CoinMarketCap)
-2. Implement webhook notifications
-3. Add comprehensive error handling
+1. Implement API key authentication
+2. Add rate limiting
+3. Comprehensive error handling
 
 ### Medium Priority
-4. Implement API key authentication
-5. Add rate limiting
-6. Production deployment
+4. Production deployment
+5. Multi-token support beyond wNEAR/USDC
+6. Cross-chain swaps (ETH, SOL, BTC)
 
 ### Future
-7. Multi-token support
-8. Cross-chain swaps (ETH, SOL, BTC)
-9. SDK libraries
+7. SDK libraries (TypeScript, Python)
+8. Dashboard for monitoring
+9. Analytics and reporting
 
 ## Running Services
 
@@ -179,15 +197,18 @@ Start worker:
 cd /root/agentfi-sdk/api && npm run worker
 ```
 
-Test swap with fee breakdown:
+Test swap with webhook:
 ```bash
 curl -X POST http://localhost:3000/v2/swap \
   -H "Content-Type: application/json" \
   -d '{
     "from": {"chain": "near", "token": "wNEAR", "amount": "2200000000000000000000000"},
     "to": {"chain": "near", "token": "USDC"},
-    "user": {"walletAddress": "YOUR_WALLET"}
-  }' | jq '.data.fees'
+    "user": {"walletAddress": "YOUR_WALLET"},
+    "options": {
+      "webhookUrl": "https://your-app.com/webhook"
+    }
+  }'
 ```
 
 Check status:
@@ -202,7 +223,9 @@ curl http://localhost:3000/v2/swap/{intentId} | jq
 ✅ Fast execution: ~43 seconds for $10 swap
 ✅ Platform fees: 15 bps successfully implemented
 ✅ Minimum validation: $5 USD minimum enforced
-✅ **Fee transparency: Complete breakdown shown to users**
+✅ Fee transparency: Complete breakdown shown to users
+✅ **Real-time notifications: Webhooks on completion/failure**
 ✅ Monitoring: Worker detects completion automatically
 ✅ Status tracking: API returns complete swap details
-✅ Test coverage: 17 tests passing
+✅ Test coverage: 26 tests passing
+✅ Security: HMAC-SHA256 webhook signatures

@@ -23,15 +23,18 @@
 - Fixed OneClick API endpoint
 - Successfully completed mainnet swaps
 - Worker correctly detecting swap completion
-- **Fixed recipient issue: USDC delivered directly to user wallet**
-- **Platform fees (15 bps) successfully implemented**
-- **End-to-end flow verified on mainnet**
-- **Minimum transaction validation ($5 USD) implemented**
-- **Tested larger swap amounts ($10)**
-- **Fee breakdown added to API response**
+- Fixed recipient issue: USDC delivered directly to user wallet
+- Platform fees (15 bps) successfully implemented
+- End-to-end flow verified on mainnet
+- Minimum transaction validation ($5 USD) implemented
+- Tested larger swap amounts ($10)
+- Fee breakdown added to API response
+- **Webhook notifications implemented with HMAC signatures**
+- **Webhook retry logic (3 attempts, 5s delay)**
+- **Complete webhook documentation created**
 
 ### Current Task 🔄
-Add redundant price sources (CoinGecko, CoinMarketCap)
+Implement API key authentication
 
 ### Next Steps 📋
 1. ✅ Implement OneClickService
@@ -47,30 +50,16 @@ Add redundant price sources (CoinGecko, CoinMarketCap)
 11. ✅ Add minimum validation ($5 USD)
 12. ✅ Test larger amounts ($10-50)
 13. ✅ Add fee breakdown to API response
-14. Add redundant price sources
-15. Implement webhook notifications
-16. Implement API key authentication
-17. Add rate limiting
+14. ✅ Implement webhook notifications
+15. Implement API key authentication
+16. Add rate limiting
+17. Comprehensive error handling
 18. Production deployment
 
 ## Session History
 
-### Sessions 1-7 (Nov 10-12)
-[Previous sessions omitted for brevity - see commit history]
-
-### November 12, 2025 - Session 8
-- Documented stuck USDC from old account
-- Created TokenPriceService for USD price fetching
-- Implemented minimum transaction validation ($5 USD)
-- Added proper error handling (400 for validation errors)
-- Created 7 TokenPriceService tests
-- Updated all existing tests for minimum validation
-- All 17 tests passing
-
-**Commits:**
-- 5da76c4: Update docs - note stuck USDC, set next task
-- d5758a0: Add minimum transaction validation ($5 USD)
-- 5d50993: Update docs - Session 8 complete
+### Sessions 1-8 (Nov 10-12)
+[Previous sessions documented in git history]
 
 ### November 12, 2025 - Session 9
 - Wrapped 10 NEAR for testing larger amounts
@@ -94,22 +83,63 @@ Add redundant price sources (CoinGecko, CoinMarketCap)
 }
 ```
 
+**Commits:**
+- 5da76c4: Update docs - note stuck USDC, set next task
+- d5758a0: Add minimum transaction validation ($5 USD)
+- 5d50993: Update docs - Session 9 complete
+
+### November 12, 2025 - Session 10
+- Created WebhookService with HMAC-SHA256 signatures
+- Implemented retry logic (3 attempts, 5 second delay)
+- Added webhook delivery to IntentMonitor worker
+- Updated SwapRequest type to include optional webhookUrl
+- Updated SwapService to save webhookUrl to database
+- Created 9 comprehensive webhook tests
+- All 26 tests passing ✅
+- Created complete WEBHOOKS.md documentation
+
+**Webhook Features:**
+- HMAC-SHA256 signature generation and verification
+- Automatic retries on failure (3 attempts)
+- 10-second timeout per attempt
+- Events: swap.completed, swap.failed
+- Headers: X-AgentFi-Signature, X-AgentFi-Event, X-AgentFi-Event-ID
+
 **Test Results:**
-- Platform fee calculation: 15 bps of 2.2 wNEAR = 0.0033 wNEAR ✅
-- Network fee estimate: ~0.5 NEAR
-- Total fees displayed clearly
-- API response verified
+- Signature generation: ✅ Consistent and unique
+- Signature verification: ✅ Valid/invalid detection
+- Payload creation: ✅ Correct format for both events
+- Delivery success: ✅ First attempt success
+- Retry logic: ✅ Succeeds on second attempt
+- Max retries: ✅ Fails after 3 attempts
+
+**Documentation:**
+- Complete webhook setup guide
+- Security best practices
+- Code examples (Node.js, Python)
+- Testing instructions with ngrok
+- Troubleshooting guide
+- FAQ section
 
 ## Key Learnings
 - OneClick API uses `/v0/status?depositAddress=X`
 - Status values: PENDING_DEPOSIT, PROCESSING, SUCCESS, INCOMPLETE_DEPOSIT, REFUNDED, FAILED
-- **Use `recipientType: "DESTINATION_CHAIN"` for direct wallet delivery**
+- Use `recipientType: "DESTINATION_CHAIN"` for direct wallet delivery
 - Worker polling every 20 seconds is sufficient
 - Platform fees via appFees parameter work seamlessly
 - Real-time price validation essential for minimum enforcement
-- **Fee transparency improves user trust and clarity**
+- Fee transparency improves user trust and clarity
+- **Webhooks provide better UX than polling**
+- **HMAC signatures essential for webhook security**
+- **Retry logic improves reliability**
 
 ## Key Decisions
+
+### Webhook Implementation
+**Decision:** HMAC-SHA256 signatures with 3 retry attempts
+**Retry Delay:** 5 seconds between attempts
+**Timeout:** 10 seconds per attempt
+**Impact:** Reliable delivery with security verification
 
 ### Fee Transparency
 **Decision:** Show platform fee and network fee separately in API response
@@ -137,23 +167,23 @@ Add redundant price sources (CoinGecko, CoinMarketCap)
 
 ## Next Session Goals
 
-### Immediate (Session 10)
-1. Add redundant price sources (CoinGecko, CoinMarketCap)
-2. Implement fallback logic if primary source fails
-3. Test price fetching with multiple sources
+### Immediate (Session 11)
+1. Implement API key authentication
+2. Create middleware for key validation
+3. Add API key management endpoints
+4. Test authentication flow
 
 ### Short Term
-4. Implement webhook notifications
-5. Add API key authentication
-6. Add rate limiting
-7. Comprehensive error handling
+5. Add rate limiting (Redis-based)
+6. Comprehensive error handling
+7. Production deployment setup
 
 ### Medium Term
-8. Production deployment setup
-9. Multi-token support beyond wNEAR/USDC
-10. Cross-chain swaps (ETH, SOL, BTC)
+8. Multi-token support beyond wNEAR/USDC
+9. Cross-chain swaps (ETH, SOL, BTC)
+10. Dashboard for monitoring
 
 ### Long Term
 11. SDK libraries (TypeScript, Python)
-12. Dashboard for monitoring
-13. Analytics and reporting
+12. Analytics and reporting
+13. Advanced monitoring and alerts
