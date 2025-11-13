@@ -1,13 +1,16 @@
 # Project State - Quick Reference
-**Last Updated:** November 12, 2025  
+**Last Updated:** November 13, 2025  
 **Branch:** agentfi-v2.0  
-**Status:** ✅ Intent expiration implemented - production quality monitoring
+**Status:** ✅ API key authentication implemented - production ready
 
 ## Quick Status
 
 **What Works:**
-- ✅ POST /v2/swap - Create swap with correct recipient + fees + fee breakdown
-- ✅ GET /v2/swap/:id - Check swap status
+- ✅ POST /v2/swap - Create swap (requires API key authentication)
+- ✅ GET /v2/swap/:id - Check swap status (public)
+- ✅ POST /v2/auth/api-key - Create API key (public)
+- ✅ GET /v2/auth/api-keys - List API keys (requires authentication)
+- ✅ DELETE /v2/auth/api-key/:id - Revoke API key (requires authentication)
 - ✅ Worker monitoring - Polls OneClick every 20s
 - ✅ Intent expiration - Auto-expires abandoned swaps after 24h
 - ✅ Direct delivery - USDC goes to user wallet automatically
@@ -16,61 +19,77 @@
 - ✅ Fee transparency - Platform fee + network fee shown separately
 - ✅ Webhook notifications - Real-time swap completion alerts
 
-**Next Task:** Implement API key authentication
+**Next Task:** Implement rate limiting
 
 ## Latest Achievement
 
-### ✅ Intent Expiration System
+### ✅ API Key Authentication
 
-**Feature:** Automatic cleanup of abandoned swap intents
-
-**Problem Solved:**
-- 15 abandoned intents from testing were clogging worker logs
-- Worker was polling OneClick API for swaps that would never complete
-- No automatic cleanup of stale intents
+**Feature:** Complete API key management and authentication system
 
 **Implementation:**
-- IntentMonitor checks intent age on startup and hourly
-- Intents in `pending_deposit` status expire after 24 hours
-- Expired intents marked with status `expired` and error message
-- Worker skips expired intents in polling loop
-- Cleaner logs - removed repetitive "still PENDING_DEPOSIT" messages
+- ApiKeyService: Generate, validate, list, and revoke API keys
+- Authentication middleware: Validates Bearer tokens on protected routes
+- ApiKeyController: REST endpoints for key management
+- bcrypt hashing: Secure key storage with 12 rounds
+- Expiration support: Optional key expiration
 
-**Results:**
-- Cleaned up 15 stale intents from Nov 11
-- Worker now runs silently when no active swaps
-- Hourly cleanup prevents accumulation
-- Clear status tracking: 0 pending, 15 expired, 5 completed
+**Security Features:**
+- Keys hashed with bcrypt before storage
+- Constant-time comparison via bcrypt
+- Prefix-based fast lookup (12 chars)
+- Last used timestamp tracking
+- User-scoped key management
+
+**API Endpoints:**
+- POST /v2/auth/api-key - Create new API key (public)
+- GET /v2/auth/api-keys - List user's keys (authenticated)
+- DELETE /v2/auth/api-key/:id - Revoke key (authenticated)
+
+**Protected Routes:**
+- POST /v2/swap - Now requires API key authentication
+
+**Public Routes:**
+- GET /v2/swap/:id - Status check remains public
+- POST /v2/auth/api-key - First key creation is public
+
+**Test Results:**
+- 36 tests passing (9 new auth tests)
+- ApiKeyService: 9 tests
+- SwapController: 4 tests (updated for auth)
+- Integration: 1 test (updated for auth)
+- All existing tests pass
+
+**Manual Testing:**
+- ✅ Create API key successfully
+- ✅ Authenticate swap request with valid key
+- ✅ Reject request without API key (401)
+- ✅ Reject request with invalid key (401)
+- ✅ List API keys for authenticated user
+- ✅ Revoke API key successfully
+- ✅ Public status endpoint works without auth
 
 ## Previous Achievements
+
+### ✅ Intent Expiration System
+- Automatic cleanup of abandoned swap intents after 24 hours
+- Hourly cleanup prevents database bloat
+- Clean worker logs - no spam from abandoned swaps
 
 ### ✅ Webhook Notifications
 - Real-time HTTP callbacks when swaps complete or fail
 - HMAC-SHA256 signatures for security
 - Retry logic (3 attempts, 5 second delay)
-- Complete documentation with examples
 
-### ✅ Fee Breakdown
+### ✅ Fee Breakdown & Minimum Validation
 - Transparent platform + network fee display
-- Human-readable formatted amounts
-- Complete fee transparency
+- $5 USD minimum transaction amount
+- Real-time price validation
 
-### ✅ Minimum Transaction Validation ($5 USD)
-- TokenPriceService for real-time USD prices
-- $5 USD minimum enforced on all swaps
-- Clear error messages for users
-
-### ✅ Recipient Issue Fixed & Platform Fees
-- Changed `recipientType: "INTENTS"` → `"DESTINATION_CHAIN"`
-- Funds go directly to user's wallet
+### ✅ Direct Delivery & Platform Fees
+- Funds go directly to user wallet (no withdrawal step)
 - Platform fee: 15 bps via appFees parameter
-
-**Verified Test Swap:**
-- Input: 4.27 wNEAR ($10 USD)
-- Output: 10.602487 USDC delivered to wallet
-- Platform fee: 15 bps deducted
-- Completion time: ~43 seconds
-- Status: ✅ SUCCESS
+- Verified working on mainnet
 
 ## Service Account
 
@@ -78,103 +97,68 @@
 **NEAR Balance:** ~3.52 NEAR
 **wNEAR Balance:** ~5.73 wNEAR
 
-### Note on Old Account
-**Old Account:** 0bdbb89f... (inaccessible due to key mismatch)
-**Stuck USDC:** 0.053174 USDC in intents.near
-**Status:** Cannot recover - documented for reference only
-**Impact:** None - new account works correctly
-
 ## Complete Flow
 
-1. Client calls `POST /v2/swap` with swap parameters + optional webhookUrl
-2. API validates minimum amount ($5 USD) ✅
-3. API requests quote with `recipientType: DESTINATION_CHAIN` + `appFees: 15 bps`
-4. API stores intent with webhookUrl in database ✅
-5. API returns deposit address + transparent fee breakdown ✅
-6. Client transfers tokens to unique depositAddress
-7. OneClick detects deposit, coordinates with solvers
-8. Solvers execute swap and deliver USDC directly to user's wallet ✅
-9. Worker polls status every 20s, updates database when SUCCESS
-10. Worker sends webhook notification with swap details ✅
-11. Worker expires intents after 24h if no deposit ✅
-12. Client checks status: `GET /v2/swap/:id` returns complete data
-
-## Platform Fees
-
-**Rate:** 15 basis points (0.15%)
-**Method:** Deducted from input token via OneClick `appFees` parameter
-**Recipient:** Service wallet (6c379f0b...)
-**Display:** Shown separately in API response ✅
-**Status:** ✅ Verified working with transparent breakdown
-
-## Minimum Transaction Amount
-
-**Limit:** $5 USD minimum
-**Method:** Real-time price validation via TokenPriceService
-**Price Source:** Defuse token API
-**Cache:** 1 minute TTL
-**Fallback:** Hardcoded approximate prices
-**Status:** ✅ Implemented and tested
-
-## Intent Expiration
-
-**Timeout:** 24 hours from creation
-**Check Interval:** Hourly (plus immediate on startup)
-**Status Change:** pending_deposit → expired
-**Error Message:** "Intent expired after 24 hours without deposit"
-**Impact:** Keeps database clean, reduces unnecessary API calls
-**Status:** ✅ Implemented and tested
-
-## Webhooks
-
-**URL:** Provided in `options.webhookUrl` field
-**Events:** swap.completed, swap.failed
-**Signature:** HMAC-SHA256 (sha256=...)
-**Retries:** 3 attempts, 5 second delay
-**Timeout:** 10 seconds per attempt
-**Status:** ✅ Implemented and tested
-**Documentation:** docs/v2.0/WEBHOOKS.md
+1. User calls `POST /v2/auth/api-key` to get API key
+2. User calls `POST /v2/swap` with API key in Authorization header
+3. API validates API key using bcrypt comparison
+4. API validates minimum amount ($5 USD)
+5. API requests quote with `recipientType: DESTINATION_CHAIN` + `appFees: 15 bps`
+6. API stores intent in database with userId and apiKeyId
+7. API returns deposit address + transparent fee breakdown
+8. User transfers tokens to unique depositAddress
+9. OneClick detects deposit, coordinates with solvers
+10. Solvers execute swap and deliver directly to user's wallet
+11. Worker polls status every 20s, updates database when SUCCESS
+12. Worker sends webhook notification
+13. Worker expires intents after 24h if no deposit
+14. User checks status: `GET /v2/swap/:id` (no auth required)
 
 ## Project Structure
 ```
 /root/agentfi-sdk/
 ├── api/src/v2/
 │   ├── services/
-│   │   ├── OneClickService.ts       ✅ With fee capture
-│   │   ├── SwapService.ts           ✅ With fee formatting + webhook support
-│   │   ├── TokenPriceService.ts     ✅ USD price fetching
-│   │   └── WebhookService.ts        ✅ Webhook delivery
+│   │   ├── OneClickService.ts       ✅ Fee capture
+│   │   ├── SwapService.ts           ✅ Uses userId/apiKeyId
+│   │   ├── TokenPriceService.ts     ✅ USD validation
+│   │   ├── WebhookService.ts        ✅ Webhook delivery
+│   │   └── ApiKeyService.ts         ✅ NEW - Key management
 │   ├── controllers/
-│   │   └── SwapController.ts        ✅ Returns fee breakdown
+│   │   ├── SwapController.ts        ✅ Auth required
+│   │   └── ApiKeyController.ts      ✅ NEW - Key endpoints
+│   ├── middleware/
+│   │   └── auth.middleware.ts       ✅ NEW - Authentication
 │   ├── types/
-│   │   └── swap.types.ts            ✅ Updated with webhookUrl option
+│   │   └── swap.types.ts            ✅ Working
 │   ├── routes/
-│   │   ├── index.ts                 ✅ Working
-│   │   └── swap.routes.ts           ✅ Working
+│   │   ├── index.ts                 ✅ Auth routes added
+│   │   ├── swap.routes.ts           ✅ Auth middleware added
+│   │   └── auth.routes.ts           ✅ NEW - Auth endpoints
 │   ├── workers/
-│   │   ├── IntentMonitor.ts         ✅ With webhook delivery + expiration
-│   │   ├── IntentCleaner.ts         ✅ NEW - Expiration logic (unused, integrated into monitor)
+│   │   ├── IntentMonitor.ts         ✅ Expiration + webhooks
 │   │   └── index.ts                 ✅ Working
-│   └── tests/                       ✅ 26 passing
+│   └── tests/                       ✅ 36 passing
 │       ├── OneClickService.test.ts       (2 tests)
 │       ├── SwapService.test.ts           (4 tests)
-│       ├── SwapController.test.ts        (3 tests)
+│       ├── SwapController.test.ts        (4 tests)
 │       ├── TokenPriceService.test.ts     (7 tests)
 │       ├── WebhookService.test.ts        (9 tests)
+│       ├── ApiKeyService.test.ts         (9 tests) ✅ NEW
 │       └── integration.test.ts           (1 test)
 └── docs/v2.0/
     ├── STATE.md                     ✅ This file
     ├── PROGRESS.md                  ✅ Updated
-    ├── WEBHOOKS.md                  ✅ Complete guide
-    ├── ONECLICK-API.md              ✅ Complete reference
-    └── ONECLICK-FEES.md             ✅ Fee guide
+    ├── WEBHOOKS.md                  ✅ Complete
+    ├── ONECLICK-API.md              ✅ Complete
+    └── ONECLICK-FEES.md             ✅ Complete
 ```
 
 ## Next Steps
 
 ### High Priority
-1. Implement API key authentication
-2. Add rate limiting
+1. ✅ Implement API key authentication
+2. Implement rate limiting (Redis-based)
 3. Comprehensive error handling
 
 ### Medium Priority
@@ -199,29 +183,34 @@ Start worker:
 cd /root/agentfi-sdk/api && npm run worker
 ```
 
-Test swap:
+Create API key:
+```bash
+curl -X POST http://localhost:3000/v2/auth/api-key \
+  -H "Content-Type: application/json" \
+  -d '{"email": "user@example.com", "name": "My Key"}'
+```
+
+Test swap (with auth):
 ```bash
 curl -X POST http://localhost:3000/v2/swap \
   -H "Content-Type: application/json" \
+  -H "Authorization: Bearer YOUR_API_KEY" \
   -d '{
     "from": {"chain": "near", "token": "wNEAR", "amount": "2200000000000000000000000"},
     "to": {"chain": "near", "token": "USDC"},
-    "user": {"walletAddress": "YOUR_WALLET"},
-    "options": {
-      "webhookUrl": "https://your-app.com/webhook"
-    }
+    "user": {"walletAddress": "YOUR_WALLET"}
   }'
 ```
 
-Check status:
+Check status (public):
 ```bash
-curl http://localhost:3000/v2/swap/{intentId} | jq
+curl http://localhost:3000/v2/swap/{intentId}
 ```
 
 ## Success Metrics
 
 ✅ Non-custodial: Funds never held by AgentFi
-✅ Direct delivery: USDC goes straight to user wallet
+✅ Direct delivery: Tokens go straight to user wallet
 ✅ Fast execution: ~43 seconds for $10 swap
 ✅ Platform fees: 15 bps successfully implemented
 ✅ Minimum validation: $5 USD minimum enforced
@@ -231,5 +220,8 @@ curl http://localhost:3000/v2/swap/{intentId} | jq
 ✅ Automatic cleanup: Expired intents removed after 24h
 ✅ Clean logs: No spam from abandoned swaps
 ✅ Status tracking: API returns complete swap details
-✅ Test coverage: 26 tests passing
+✅ Test coverage: 36 tests passing
 ✅ Security: HMAC-SHA256 webhook signatures
+✅ Authentication: API key system with bcrypt
+✅ Authorization: User-scoped key management
+✅ Key security: Hashed storage, constant-time comparison

@@ -134,3 +134,4 @@ model TokenPrice {
   
   @@map("token_prices")
 }
+

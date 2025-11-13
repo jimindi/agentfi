@@ -5,15 +5,17 @@ import { PrismaClient } from '@prisma/client';
 
 export class SwapService {
   private prisma: PrismaClient;
-  private readonly SYSTEM_USER_ID = '00000000-0000-0000-0000-000000000000';
-  private readonly SYSTEM_API_KEY_ID = '87075fb4-d9dd-499f-9e88-6a98783a6407';
   private readonly MINIMUM_USD_VALUE = 5.0; // $5 minimum
 
   constructor(prisma: PrismaClient) {
     this.prisma = prisma;
   }
 
-  async executeSwap(request: SwapRequest): Promise<SwapResult> {
+  async executeSwap(
+    request: SwapRequest,
+    userId: string,
+    apiKeyId: string
+  ): Promise<SwapResult> {
     // Validate minimum transaction amount
     await this.validateMinimumAmount(request);
 
@@ -31,14 +33,14 @@ export class SwapService {
     const totalFee = BigInt(quote.fees.platformFeeAmount) + BigInt(quote.fees.networkFeeEstimate);
     const totalFeeFormatted = this.formatAmount(totalFee.toString(), 24);
 
-    // Store in database
+    // Store in database with actual user and API key
     const intent = await this.prisma.intent.create({
       data: {
         user: {
-          connect: { id: this.SYSTEM_USER_ID }
+          connect: { id: userId }
         },
         apiKey: {
-          connect: { id: this.SYSTEM_API_KEY_ID }
+          connect: { id: apiKeyId }
         },
         fromChain: request.from.chain,
         fromToken: request.from.token,

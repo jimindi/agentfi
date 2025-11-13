@@ -227,3 +227,67 @@ Implement API key authentication
 11. SDK libraries (TypeScript, Python)
 12. Analytics and reporting
 13. Advanced monitoring and alerts
+
+### November 13, 2025 - Session 12
+- Implemented complete API key authentication system
+- Created ApiKeyService with bcrypt hashing (12 rounds)
+- Built authentication middleware for protected routes
+- Added ApiKeyController with 3 endpoints (create, list, revoke)
+- Updated SwapController to require authentication
+- Modified SwapService to accept userId and apiKeyId parameters
+- Created comprehensive test suite (9 new tests)
+- All 36 tests passing ✅
+- Manual testing verified all functionality
+
+**API Key Features:**
+- Secure key generation: `sk_live_{64_hex_chars}`
+- bcrypt hashing with 12 rounds before storage
+- Prefix-based fast lookup (12 characters)
+- Constant-time comparison for validation
+- Last used timestamp tracking
+- Optional key expiration
+- User-scoped key management
+
+**Endpoints Added:**
+- POST /v2/auth/api-key - Create API key (public)
+- GET /v2/auth/api-keys - List keys (authenticated)
+- DELETE /v2/auth/api-key/:id - Revoke key (authenticated)
+
+**Protected Routes:**
+- POST /v2/swap - Now requires API key authentication
+- Returns 401 without valid key
+
+**Public Routes:**
+- GET /v2/swap/:id - Status remains public
+- POST /v2/auth/api-key - First key creation public
+
+**Test Coverage:**
+- Key generation and uniqueness
+- Key creation with hashing
+- Validation of valid/invalid/expired keys
+- Listing user's keys
+- Revoking keys (with user ownership check)
+- Controller authentication checks
+- Integration test with real user/key
+
+**Manual Testing:**
+- ✅ Created API key successfully
+- ✅ Authenticated swap with valid key
+- ✅ Rejected swap without API key (401)
+- ✅ Rejected swap with invalid key (401)
+- ✅ Listed API keys for user
+- ✅ Revoked API key successfully
+- ✅ Verified status endpoint remains public
+
+**Security Implementation:**
+- Keys never stored in plaintext
+- bcrypt constant-time comparison prevents timing attacks
+- User-scoped operations (can't revoke other users' keys)
+- Last used timestamp for audit trail
+- Optional expiration for temporary keys
+
+**Commits:**
+- [pending] v2.0: Implement API key authentication system
+
+### Current Task 🔄
+Implement rate limiting (Redis-based)

@@ -12,8 +12,26 @@ export class SwapController {
 
   async executeSwap(req: Request, res: Response): Promise<void> {
     try {
+      // Auth middleware ensures req.auth exists
+      if (!req.auth) {
+        res.status(401).json({
+          success: false,
+          error: {
+            code: 'AUTHENTICATION_REQUIRED',
+            message: 'Authentication required'
+          }
+        });
+        return;
+      }
+
       const swapRequest: SwapRequest = req.body;
-      const result = await this.swapService.executeSwap(swapRequest);
+      
+      // Pass userId and apiKeyId to service
+      const result = await this.swapService.executeSwap(
+        swapRequest,
+        req.auth.userId,
+        req.auth.apiKeyId
+      );
 
       res.status(200).json({
         success: true,

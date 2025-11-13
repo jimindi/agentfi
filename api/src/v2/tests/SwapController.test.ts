@@ -21,6 +21,11 @@ describe('SwapController', () => {
   describe('executeSwap', () => {
     it('should return 400 for amount below minimum', async () => {
       const mockReq = {
+        auth: {
+          userId: 'test-user-id',
+          apiKeyId: 'test-key-id',
+          rateLimitPerHour: 1000
+        },
         body: {
           from: {
             chain: 'near',
@@ -56,6 +61,11 @@ describe('SwapController', () => {
 
     it('should return 500 on unknown token error', async () => {
       const mockReq = {
+        auth: {
+          userId: 'test-user-id',
+          apiKeyId: 'test-key-id',
+          rateLimitPerHour: 1000
+        },
         body: {
           from: {
             chain: 'near',
@@ -82,6 +92,42 @@ describe('SwapController', () => {
       // Unknown decimals error returns 500 (not a validation error per se)
       expect(mockRes.status).toHaveBeenCalledWith(500);
       expect(mockRes.json).toHaveBeenCalled();
+    });
+
+    it('should return 401 when not authenticated', async () => {
+      const mockReq = {
+        // No auth object
+        body: {
+          from: {
+            chain: 'near',
+            token: 'wNEAR',
+            amount: '2200000000000000000000000'
+          },
+          to: {
+            chain: 'near',
+            token: 'USDC'
+          },
+          user: {
+            walletAddress: 'test.near'
+          }
+        }
+      } as any;
+
+      const mockRes = {
+        status: vi.fn().mockReturnThis(),
+        json: vi.fn()
+      } as any;
+
+      await controller.executeSwap(mockReq, mockRes);
+
+      expect(mockRes.status).toHaveBeenCalledWith(401);
+      expect(mockRes.json).toHaveBeenCalledWith({
+        success: false,
+        error: {
+          code: 'AUTHENTICATION_REQUIRED',
+          message: 'Authentication required'
+        }
+      });
     });
   });
 
