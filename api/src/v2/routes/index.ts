@@ -1,8 +1,12 @@
 import { Router } from 'express';
 import swapRoutes from './swap.routes';
 import authRoutes from './auth.routes';
+import { ipRateLimiter } from '../services/RateLimitService';
 
 const router = Router();
+
+// Apply IP-based rate limiting to all v2 routes
+router.use(ipRateLimiter);
 
 // Mount routes
 router.use('/swap', swapRoutes);

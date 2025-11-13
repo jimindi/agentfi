@@ -291,3 +291,76 @@ Implement API key authentication
 
 ### Current Task 🔄
 Implement rate limiting (Redis-based)
+
+### November 13, 2025 - Session 13
+- Implemented complete rate limiting system with Redis
+- Created RateLimitService with multi-tier protection
+- Fixed IPv6 vulnerability in rate limit key generation
+- Applied rate limiting to all v2 endpoints
+- Created comprehensive test suite (15 new tests)
+- All 51 tests passing ✅
+- Manual testing verified all rate limit tiers
+
+**Rate Limiting Implementation:**
+
+**Multi-Tier Protection:**
+1. IP-based (100/hour): All v2 endpoints, prevents DDoS
+2. Auth endpoints (5/min): Prevents brute force attacks
+3. API key operations (1000/hour): Fair usage per user
+4. Swap endpoint (10/min): Protects expensive operations
+
+**Key Features:**
+- Redis-backed distributed rate limiting
+- Proper IPv6 address handling (no bypass)
+- Standard RateLimit-* headers in responses
+- Graceful degradation if Redis unavailable
+- User-based when authenticated, IP fallback otherwise
+
+**Headers Example:**
+```
+RateLimit-Policy: 10;w=60
+RateLimit-Limit: 10
+RateLimit-Remaining: 9
+RateLimit-Reset: 60
+```
+
+**Error Response (429):**
+```json
+{
+  "success": false,
+  "error": {
+    "code": "RATE_LIMIT_EXCEEDED",
+    "message": "API rate limit exceeded",
+    "retryAfter": 3600
+  }
+}
+```
+
+**Test Results:**
+- Configuration tests: ✅ All limits correct
+- Error message tests: ✅ Proper format
+- getRateLimitInfo: ✅ Returns structure correctly
+- resetRateLimit: ✅ Works without errors
+- Key generator logic: ✅ Uses user ID or falls back to IP
+- Standard headers: ✅ Enabled, legacy disabled
+
+**Manual Testing:**
+- ✅ IP rate limiting active on all v2 routes
+- ✅ Auth endpoint limited to 5/min per IP
+- ✅ Swap endpoint limited to 10/min per user
+- ✅ Rate limit headers present in all responses
+- ✅ 429 error returned when limit exceeded
+- ✅ Redis connection stable
+
+**Security Improvements:**
+- Prevents DDoS attacks with IP limits
+- Prevents brute force with auth limits
+- Protects expensive operations with swap limits
+- Ensures fair usage with per-user limits
+- No IPv6 bypass vulnerability
+
+**Commits:**
+- [pending] v2.0: Implement Redis-based rate limiting system
+
+### Current Task 🔄
+Implement comprehensive error handling
