@@ -1,12 +1,13 @@
 # Project State - Quick Reference
-**Last Updated:** November 13, 2025  
+**Last Updated:** November 14, 2025  
 **Branch:** agentfi-v2.0  
-**Status:** ✅ Error handling implemented - production ready
+**Status:** 🔄 Implementing multi-token support - preparing for production
 
 ## Quick Status
 
 **What Works:**
 - ✅ POST /v2/swap - Create swap (requires API key, rate limited: 10/min)
+  - ⚠️ Currently limited to wNEAR/USDC only
 - ✅ GET /v2/swap/:id - Check swap status (public, rate limited: 100/hour per IP)
 - ✅ POST /v2/auth/api-key - Create API key (public, rate limited: 5/min)
 - ✅ GET /v2/auth/api-keys - List API keys (requires authentication)
@@ -22,11 +23,59 @@
 - ✅ Rate limiting - Redis-based multi-tier protection
 - ✅ Error handling - Comprehensive custom error system
 
-**Next Task:** Production deployment
+**Next Task:** Implement multi-token support (117+ tokens, 22+ chains)
+
+## Current Development Focus
+
+### 🔄 Multi-Token Support Implementation
+
+**Goal:** Support all 117+ tokens available through OneClick API across 22+ blockchains
+
+**Current Limitation:** API only supports hardcoded wNEAR → USDC swaps
+
+**Target:** Dynamic token discovery and resolution
+- Native tokens: BTC, ETH, SOL (no contractAddress)
+- Contract tokens: USDC, wNEAR, wBTC (with contractAddress)
+- Cross-chain swaps: NEAR ↔ ETH ↔ SOL ↔ BTC, etc.
+
+**Implementation Plan:**
+1. Create TokenService - fetch/cache tokens from OneClick `/v0/tokens`
+2. Update types - make contractAddress optional
+3. Update TokenPriceService - use OneClick prices dynamically
+4. Update SwapService - remove hardcoded logic, add token resolution
+5. Create TokenController - add GET /v2/tokens endpoint
+6. Add token routes with rate limiting
+7. Write comprehensive tests
+8. Update documentation
+
+**Input Format (Hybrid):**
+```json
+// Simple (symbol + chain)
+{"from": {"chain": "near", "token": "USDC"}}
+
+// Explicit (assetId)
+{"from": {"token": "nep141:17208628..."}}
+```
+
+**New Endpoint:**
+```bash
+GET /v2/tokens
+GET /v2/tokens?chain=near
+GET /v2/tokens?symbol=USDC
+```
+
+**Token Categories:**
+- **Native tokens** (21 tokens): BTC, ETH, SOL, AVAX, BNB, POL, TRX, TON, ADA, APT, LTC, DOGE, XRP, XLM, BERA, ZEC
+  - No contractAddress (they ARE the blockchain)
+- **Contract tokens** (96 tokens): USDC, USDT, wNEAR, wBTC, DAI, etc.
+  - Have contractAddress (smart contracts on blockchains)
+
+**Supported Blockchains (22+):**
+NEAR, Ethereum, Bitcoin, Solana, Arbitrum, Base, Polygon, BSC, Optimism, Avalanche, Gnosis, Tron, TON, Sui, Stellar, Cardano, Aptos, Litecoin, Dogecoin, XRP, Zcash, Berachain
 
 ## Latest Achievement
 
-### ✅ Comprehensive Error Handling
+### ✅ Comprehensive Error Handling (Session 14)
 
 **Feature:** Custom error classes with centralized error handling middleware
 
@@ -95,28 +144,28 @@
 
 ## Previous Achievements
 
-### ✅ Rate Limiting System
+### ✅ Rate Limiting System (Session 13)
 - Redis-based multi-tier protection
 - IP-based (100/hour), auth endpoints (5/min), swaps (10/min)
 - Standard RateLimit-* headers
 - 51 tests passing before error handling
 
-### ✅ API Key Authentication
+### ✅ API Key Authentication (Session 12)
 - bcrypt hashing, user-scoped operations
 - 36 tests passing before rate limiting
 
-### ✅ Intent Expiration System
+### ✅ Intent Expiration System (Session 11)
 - Automatic cleanup after 24 hours
 - Hourly cleanup prevents database bloat
 
-### ✅ Webhook Notifications
+### ✅ Webhook Notifications (Session 10)
 - HMAC-SHA256 signatures
 - Retry logic (3 attempts, 5s delay)
 
-### ✅ Fee Breakdown & Minimum Validation
+### ✅ Fee Breakdown & Minimum Validation (Session 9)
 - Transparent fees, $5 USD minimum
 
-### ✅ Direct Delivery & Platform Fees
+### ✅ Direct Delivery & Platform Fees (Sessions 1-8)
 - Funds to user wallet, 15 bps via appFees
 
 ## Service Account
@@ -125,13 +174,13 @@
 **NEAR Balance:** ~3.52 NEAR
 **wNEAR Balance:** ~5.73 wNEAR
 
-## Complete Flow
+## Complete Flow (Current - wNEAR/USDC Only)
 
 1. User calls `POST /v2/auth/api-key` (rate limited: 5/min)
 2. User calls `POST /v2/swap` with API key (rate limited: 10/min)
 3. API validates API key and rate limits
 4. API validates minimum amount ($5 USD)
-5. API requests quote with fees
+5. API requests quote with fees (hardcoded wNEAR/USDC)
 6. API stores intent with userId/apiKeyId
 7. API returns deposit address + fee breakdown
 8. User transfers tokens to depositAddress
@@ -147,43 +196,44 @@
 /root/agentfi-sdk/
 ├── api/src/v2/
 │   ├── errors/
-│   │   ├── AppError.ts                ✅ NEW - Custom error classes
-│   │   └── index.ts                   ✅ NEW - Error exports
+│   │   ├── AppError.ts                ✅ Custom error classes
+│   │   └── index.ts                   ✅ Error exports
 │   ├── services/
-│   │   ├── OneClickService.ts         ✅ Updated - Custom errors
-│   │   ├── SwapService.ts             ✅ Updated - Custom errors
-│   │   ├── TokenPriceService.ts       ✅ Updated - Custom errors
+│   │   ├── OneClickService.ts         ✅ OneClick integration
+│   │   ├── SwapService.ts             ✅ Swap logic (needs update for multi-token)
+│   │   ├── TokenPriceService.ts       ✅ Price validation (needs update)
 │   │   ├── WebhookService.ts          ✅ Notifications
-│   │   ├── ApiKeyService.ts           ✅ Updated - Custom errors
+│   │   ├── ApiKeyService.ts           ✅ Authentication
 │   │   └── RateLimitService.ts        ✅ Multi-tier limits
 │   ├── controllers/
-│   │   ├── SwapController.ts          ✅ Updated - Error handling
-│   │   └── ApiKeyController.ts        ✅ Auth
+│   │   ├── SwapController.ts          ✅ Swap endpoints
+│   │   └── ApiKeyController.ts        ✅ Auth endpoints
 │   ├── middleware/
-│   │   ├── auth.middleware.ts         ✅ Updated - Custom errors
-│   │   ├── errorHandler.ts            ✅ NEW - Error handling
-│   │   └── index.ts                   ✅ NEW - Exports
+│   │   ├── auth.middleware.ts         ✅ API key validation
+│   │   ├── errorHandler.ts            ✅ Error handling
+│   │   └── index.ts                   ✅ Exports
 │   ├── routes/
-│   │   ├── index.ts                   ✅ Updated - Error handlers
-│   │   ├── swap.routes.ts             ✅ Rate limiting
-│   │   └── auth.routes.ts             ✅ Rate limiting
+│   │   ├── index.ts                   ✅ Main router
+│   │   ├── swap.routes.ts             ✅ Swap routes
+│   │   └── auth.routes.ts             ✅ Auth routes
 │   ├── workers/
 │   │   ├── IntentMonitor.ts           ✅ Expiration + webhooks
 │   │   └── index.ts                   ✅ Working
 │   └── tests/                         ✅ 83 passing
-│       ├── errors.test.ts             ✅ NEW - 20 tests
-│       ├── errorHandler.test.ts       ✅ NEW - 12 tests
+│       ├── errors.test.ts             (20 tests)
+│       ├── errorHandler.test.ts       (12 tests)
 │       ├── OneClickService.test.ts    (2 tests)
-│       ├── SwapService.test.ts        (4 tests - updated)
-│       ├── SwapController.test.ts     (4 tests - updated)
-│       ├── TokenPriceService.test.ts  (7 tests - updated)
+│       ├── SwapService.test.ts        (4 tests)
+│       ├── SwapController.test.ts     (4 tests)
+│       ├── TokenPriceService.test.ts  (7 tests)
 │       ├── WebhookService.test.ts     (9 tests)
-│       ├── ApiKeyService.test.ts      (9 tests - updated)
+│       ├── ApiKeyService.test.ts      (9 tests)
 │       ├── RateLimitService.test.ts   (15 tests)
 │       └── integration.test.ts        (1 test)
 └── docs/v2.0/
     ├── STATE.md                     ✅ This file
     ├── PROGRESS.md                  ✅ Updated
+    ├── MULTI-TOKEN-IMPLEMENTATION.md ✅ NEW - Implementation plan
     ├── WEBHOOKS.md                  ✅ Complete
     ├── ONECLICK-API.md              ✅ Complete
     └── ONECLICK-FEES.md             ✅ Complete
@@ -191,22 +241,26 @@
 
 ## Next Steps
 
-### High Priority
-1. ✅ Implement API key authentication
-2. ✅ Implement rate limiting
-3. ✅ Comprehensive error handling
-4. Production deployment
-5. Load testing
+### High Priority (Before Production)
+1. 🔄 **Implement multi-token support** ⬅️ CURRENT TASK
+   - Create TokenService
+   - Update types and services
+   - Add token discovery endpoint
+   - Write comprehensive tests
+   - Estimated: 7-11 hours over 4 days
+
+2. Production deployment
+3. Load testing with multiple token pairs
 
 ### Medium Priority
-6. Multi-token support beyond wNEAR/USDC
-7. Cross-chain swaps (ETH, SOL, BTC)
-8. Advanced monitoring and alerting
+4. Multi-token cross-chain testing
+5. Advanced monitoring and alerting
+6. SDK libraries (TypeScript, Python)
 
 ### Future
-9. SDK libraries (TypeScript, Python)
-10. Dashboard for monitoring
-11. Analytics and reporting
+7. Dashboard for monitoring
+8. Analytics and reporting
+9. Advanced features
 
 ## Running Services
 
@@ -220,31 +274,21 @@ Start worker:
 cd /root/agentfi-sdk/api && npm run worker
 ```
 
-Test error handling:
+Run tests:
 ```bash
-# Test validation error (amount too low)
+cd /root/agentfi-sdk/api && npx vitest run
+```
+
+Test swap (currently wNEAR/USDC only):
+```bash
 curl -X POST http://localhost:3000/v2/swap \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer YOUR_API_KEY" \
   -d '{
-    "from": {"chain": "near", "token": "wNEAR", "amount": "1000000000000000000000"},
+    "from": {"chain": "near", "token": "wNEAR", "amount": "10000000000000000000000"},
     "to": {"chain": "near", "token": "USDC"},
     "user": {"walletAddress": "test.near"}
   }'
-
-# Expected: 422 ValidationError - below $5 minimum
-
-# Test unauthorized error (no API key)
-curl -X POST http://localhost:3000/v2/swap \
-  -H "Content-Type: application/json" \
-  -d '{"from": {...}, "to": {...}}'
-
-# Expected: 401 UnauthorizedError
-
-# Test not found error
-curl http://localhost:3000/v2/swap/nonexistent-id
-
-# Expected: 404 NotFoundError
 ```
 
 ## Success Metrics
@@ -270,3 +314,7 @@ curl http://localhost:3000/v2/swap/nonexistent-id
 ✅ Error handling: Comprehensive custom error system
 ✅ Production ready: Proper error responses
 ✅ Developer friendly: Clear error codes and messages
+🔄 Multi-token support: In progress
+⏳ Cross-chain swaps: Pending multi-token
+⏳ 117+ tokens: Pending multi-token
+⏳ 22+ blockchains: Pending multi-token

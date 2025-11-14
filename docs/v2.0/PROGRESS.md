@@ -1,6 +1,6 @@
 # Development Progress
 
-## Current Phase: Production Features
+## Current Phase: Production Preparation
 
 ### Completed ✅
 - Created v2.0 branch
@@ -32,12 +32,15 @@
 - Webhook notifications implemented with HMAC signatures
 - Webhook retry logic (3 attempts, 5s delay)
 - Complete webhook documentation created
-- **Intent expiration system - auto-expires after 24h**
-- **Cleaned up 15 abandoned test intents**
-- **Worker logs optimized - removed spam**
+- Intent expiration system - auto-expires after 24h
+- Cleaned up 15 abandoned test intents
+- Worker logs optimized - removed spam
+- **API key authentication - bcrypt-based security**
+- **Rate limiting - Redis multi-tier protection**
+- **Comprehensive error handling - 12 custom error classes**
 
 ### Current Task 🔄
-Implement API key authentication
+Implement multi-token support (117+ tokens across 22+ chains)
 
 ### Next Steps 📋
 1. ✅ Implement OneClickService
@@ -55,102 +58,100 @@ Implement API key authentication
 13. ✅ Add fee breakdown to API response
 14. ✅ Implement webhook notifications
 15. ✅ Intent expiration system
-16. Implement API key authentication
-17. Add rate limiting
-18. Comprehensive error handling
-19. Production deployment
+16. ✅ Implement API key authentication
+17. ✅ Add rate limiting
+18. ✅ Comprehensive error handling
+19. **Implement multi-token support** ⬅️ CURRENT
+20. Production deployment
 
 ## Session History
 
-### Sessions 1-8 (Nov 10-12)
-[Previous sessions documented in git history]
+### Sessions 1-14 (Nov 10-13)
+[Sessions documented in git history and below]
 
-### November 12, 2025 - Session 9
-- Wrapped 10 NEAR for testing larger amounts
-- Successfully tested $10 swap (4.27 wNEAR → 10.602487 USDC)
-- Completed in ~43 seconds ✅
-- Enhanced OneClickService to capture fee details from quote
-- Added fee calculation and formatting in SwapService
-- Created new SwapResult type with fee breakdown
-- Updated tests with new fee structure
-- All 17 tests passing
+### November 13, 2025 - Session 15
+- Completed git work from previous session
+- Committed comprehensive error handling system
+- Pushed all changes to agentfi-v2.0 branch
+- Verified all 83 tests passing
+- Updated PROJECT-INSTRUCTIONS.md with correct test command
+- Confirmed production readiness
 
-**Fee Breakdown Implementation:**
-```json
-{
-  "platformFeeBps": 15,
-  "platformFeeAmount": "3300000000000000000000",
-  "platformFeeFormatted": "0.003300 wNEAR",
-  "networkFeeEstimate": "500000000000000000000000",
-  "networkFeeFormatted": "0.500000 NEAR",
-  "totalFeeFormatted": "0.503300 NEAR (approx)"
-}
-```
+**Session Notes:**
+- All core development features now complete
+- Error handling: 83 tests passing ✅
+- Rate limiting: Redis-based multi-tier protection ✅
+- API key authentication: bcrypt-based security ✅
+- Webhooks: HMAC-SHA256 signatures ✅
+- Intent expiration: 24h auto-cleanup ✅
+- All code committed and pushed
 
 **Commits:**
-- 5da76c4: Update docs - note stuck USDC, set next task
-- d5758a0: Add minimum transaction validation ($5 USD)
-- 5d50993: Update docs - Session 9 complete
+- 8b43f05: v2.0: Implement comprehensive error handling system
 
-### November 12, 2025 - Session 10
-- Created WebhookService with HMAC-SHA256 signatures
-- Implemented retry logic (3 attempts, 5 second delay)
-- Added webhook delivery to IntentMonitor worker
-- Updated SwapRequest type to include optional webhookUrl
-- Updated SwapService to save webhookUrl to database
-- Created 9 comprehensive webhook tests
-- All 26 tests passing ✅
-- Created complete WEBHOOKS.md documentation
+### November 14, 2025 - Session 16
+- Analyzed OneClick token support (117 tokens across 22+ blockchains)
+- Identified current limitation: hardcoded wNEAR/USDC only
+- Discovered native tokens (BTC, ETH, SOL) don't have contractAddress
+- Designed multi-token support architecture
+- Created comprehensive implementation plan
+- Decided on hybrid input approach (symbol+chain OR assetId)
+- Planned token discovery endpoint (GET /v2/tokens)
 
-**Webhook Features:**
-- HMAC-SHA256 signature generation and verification
-- Automatic retries on failure (3 attempts)
-- 10-second timeout per attempt
-- Events: swap.completed, swap.failed
-- Headers: X-AgentFi-Signature, X-AgentFi-Event, X-AgentFi-Event-ID
+**Key Decisions:**
 
-**Test Results:**
-- Signature generation: ✅ Consistent and unique
-- Signature verification: ✅ Valid/invalid detection
-- Payload creation: ✅ Correct format for both events
-- Delivery success: ✅ First attempt success
-- Retry logic: ✅ Succeeds on second attempt
-- Max retries: ✅ Fails after 3 attempts
+**Token Categories:**
+1. Native tokens (BTC, ETH, SOL) - no contractAddress
+2. Contract tokens (USDC, wNEAR, wBTC) - have contractAddress
 
-**Documentation:**
-- Complete webhook setup guide
-- Security best practices
-- Code examples (Node.js, Python)
-- Testing instructions with ngrok
-- Troubleshooting guide
-- FAQ section
+**Input Format (Hybrid):**
+- Simple: `{"chain": "near", "token": "USDC"}`
+- Explicit: `{"token": "nep141:17208628..."}`
 
-### November 12, 2025 - Session 11
-- Identified 15 abandoned intents from Nov 11 testing
-- Worker was spamming logs checking stale deposits
-- Implemented intent expiration system
-- Added automatic cleanup: expires after 24 hours
-- Runs on startup + hourly interval
-- Cleaned logs: removed repetitive messages
-- Manually expired 15 stale intents for clean slate
-- Verified expiration works with new test swap
+**Output Format:**
+- Always include full token details
+- contractAddress optional (only for contract tokens)
+- Include assetId as primary identifier
+- Enhanced verification for DEX builders
 
-**Intent Expiration Implementation:**
-- `IntentMonitor.cleanExpiredIntents()` method
-- Checks for intents older than 24 hours
-- Updates status: pending_deposit → expired
-- Sets error message: "Intent expired after 24 hours without deposit"
-- Runs immediately on startup, then hourly
-- Worker skips expired intents in polling
+**Token Resolution:**
+- Check if input is assetId (contains ":")
+- If symbol: lookup with optional chain filter
+- Handle ambiguous symbols gracefully
+- Provide clear error messages with available options
 
-**Results:**
-- Database status: 0 pending, 15 expired, 5 completed
-- Worker logs clean and quiet
-- No more spam for abandoned swaps
-- System ready for production scale
+**Token Discovery:**
+- GET /v2/tokens - list all tokens
+- GET /v2/tokens?chain=near - filter by chain
+- GET /v2/tokens?symbol=USDC - filter by symbol
+- Cache with 1-hour TTL, refresh every 30 min
 
-**Commits:**
-- 0c7a501: Add intent expiration - auto-expire abandoned swaps after 24h
+**Implementation Plan Created:**
+1. TokenService - fetch/cache tokens from OneClick
+2. Update types - make contractAddress optional
+3. Update TokenPriceService - use OneClick prices
+4. Update SwapService - dynamic token resolution
+5. TokenController - token discovery endpoints
+6. Tests - native tokens, contract tokens, cross-chain
+7. Documentation - API examples, SDK guides
+
+**Benefits for DEX Builders:**
+- Flexibility: simple or explicit input
+- Verification: contractAddress in responses
+- Discovery: /v2/tokens endpoint for UIs
+- No maintenance: auto-updates from OneClick
+- Cross-chain ready: all 22+ chains supported
+
+**Next Session Goals:**
+1. Implement TokenService with caching
+2. Update type definitions
+3. Update SwapService for multi-token
+4. Add token discovery endpoints
+5. Write comprehensive tests
+6. Update documentation
+
+### Current Task 🔄
+Implement multi-token support (117+ tokens, 22+ chains)
 
 ## Key Learnings
 - OneClick API uses `/v0/status?depositAddress=X`
@@ -163,11 +164,34 @@ Implement API key authentication
 - Webhooks provide better UX than polling
 - HMAC signatures essential for webhook security
 - Retry logic improves reliability
-- **Intent expiration prevents database bloat**
-- **Clean logs essential for production monitoring**
-- **24-hour timeout is reasonable for user deposits**
+- Intent expiration prevents database bloat
+- Clean logs essential for production monitoring
+- 24-hour timeout is reasonable for user deposits
+- API key authentication with bcrypt is secure and performant
+- Multi-tier rate limiting protects against abuse
+- Comprehensive error handling improves developer experience
+- **OneClick supports 117+ tokens across 22+ blockchains**
+- **Native tokens don't have contractAddress**
+- **Hybrid input format (symbol+chain OR assetId) provides flexibility**
+- **Token discovery endpoint essential for DEX builders**
 
 ## Key Decisions
+
+### Multi-Token Support
+**Decision:** Support all 117+ tokens via dynamic discovery from OneClick
+**Input Format:** Hybrid - accept symbol+chain OR assetId
+**Token Resolution:** Check for assetId format, otherwise lookup by symbol+chain
+**Ambiguity Handling:** Require chain specification if multiple matches
+**Discovery:** Provide GET /v2/tokens endpoint with filtering
+**Caching:** 1-hour TTL with 30-minute refresh cycle
+**Impact:** Enables DEX builders, cross-chain swaps, no hardcoded tokens
+
+### Native vs Contract Tokens
+**Decision:** Make contractAddress optional in all types and responses
+**Native Tokens:** BTC, ETH, SOL, etc. - no contractAddress
+**Contract Tokens:** USDC, wNEAR, etc. - include contractAddress
+**Verification:** Always include assetId as primary identifier
+**Impact:** Supports all token types, enables sophisticated verification
 
 ### Intent Expiration
 **Decision:** 24-hour timeout with hourly cleanup
@@ -207,287 +231,26 @@ Implement API key authentication
 
 ## Next Session Goals
 
-### Immediate (Session 12)
-1. Implement API key authentication
-2. Create middleware for key validation
-3. Add API key management endpoints
-4. Test authentication flow
+### Immediate (Session 17)
+1. Implement TokenService with caching
+2. Create and update type definitions
+3. Update TokenPriceService to use OneClick prices
+4. Begin updating SwapService
 
 ### Short Term
-5. Add rate limiting (Redis-based)
-6. Comprehensive error handling
-7. Production deployment setup
+5. Complete SwapService updates
+6. Create TokenController
+7. Add token routes
+8. Write comprehensive tests
+9. Update documentation
 
 ### Medium Term
-8. Multi-token support beyond wNEAR/USDC
-9. Cross-chain swaps (ETH, SOL, BTC)
-10. Dashboard for monitoring
+10. Production deployment setup
+11. Load testing with multiple token pairs
+12. Cross-chain swap testing
+13. Dashboard for monitoring
 
 ### Long Term
-11. SDK libraries (TypeScript, Python)
-12. Analytics and reporting
-13. Advanced monitoring and alerts
-
-### November 13, 2025 - Session 12
-- Implemented complete API key authentication system
-- Created ApiKeyService with bcrypt hashing (12 rounds)
-- Built authentication middleware for protected routes
-- Added ApiKeyController with 3 endpoints (create, list, revoke)
-- Updated SwapController to require authentication
-- Modified SwapService to accept userId and apiKeyId parameters
-- Created comprehensive test suite (9 new tests)
-- All 36 tests passing ✅
-- Manual testing verified all functionality
-
-**API Key Features:**
-- Secure key generation: `sk_live_{64_hex_chars}`
-- bcrypt hashing with 12 rounds before storage
-- Prefix-based fast lookup (12 characters)
-- Constant-time comparison for validation
-- Last used timestamp tracking
-- Optional key expiration
-- User-scoped key management
-
-**Endpoints Added:**
-- POST /v2/auth/api-key - Create API key (public)
-- GET /v2/auth/api-keys - List keys (authenticated)
-- DELETE /v2/auth/api-key/:id - Revoke key (authenticated)
-
-**Protected Routes:**
-- POST /v2/swap - Now requires API key authentication
-- Returns 401 without valid key
-
-**Public Routes:**
-- GET /v2/swap/:id - Status remains public
-- POST /v2/auth/api-key - First key creation public
-
-**Test Coverage:**
-- Key generation and uniqueness
-- Key creation with hashing
-- Validation of valid/invalid/expired keys
-- Listing user's keys
-- Revoking keys (with user ownership check)
-- Controller authentication checks
-- Integration test with real user/key
-
-**Manual Testing:**
-- ✅ Created API key successfully
-- ✅ Authenticated swap with valid key
-- ✅ Rejected swap without API key (401)
-- ✅ Rejected swap with invalid key (401)
-- ✅ Listed API keys for user
-- ✅ Revoked API key successfully
-- ✅ Verified status endpoint remains public
-
-**Security Implementation:**
-- Keys never stored in plaintext
-- bcrypt constant-time comparison prevents timing attacks
-- User-scoped operations (can't revoke other users' keys)
-- Last used timestamp for audit trail
-- Optional expiration for temporary keys
-
-**Commits:**
-- [pending] v2.0: Implement API key authentication system
-
-### Current Task 🔄
-Implement rate limiting (Redis-based)
-
-### November 13, 2025 - Session 13
-- Implemented complete rate limiting system with Redis
-- Created RateLimitService with multi-tier protection
-- Fixed IPv6 vulnerability in rate limit key generation
-- Applied rate limiting to all v2 endpoints
-- Created comprehensive test suite (15 new tests)
-- All 51 tests passing ✅
-- Manual testing verified all rate limit tiers
-
-**Rate Limiting Implementation:**
-
-**Multi-Tier Protection:**
-1. IP-based (100/hour): All v2 endpoints, prevents DDoS
-2. Auth endpoints (5/min): Prevents brute force attacks
-3. API key operations (1000/hour): Fair usage per user
-4. Swap endpoint (10/min): Protects expensive operations
-
-**Key Features:**
-- Redis-backed distributed rate limiting
-- Proper IPv6 address handling (no bypass)
-- Standard RateLimit-* headers in responses
-- Graceful degradation if Redis unavailable
-- User-based when authenticated, IP fallback otherwise
-
-**Headers Example:**
-```
-RateLimit-Policy: 10;w=60
-RateLimit-Limit: 10
-RateLimit-Remaining: 9
-RateLimit-Reset: 60
-```
-
-**Error Response (429):**
-```json
-{
-  "success": false,
-  "error": {
-    "code": "RATE_LIMIT_EXCEEDED",
-    "message": "API rate limit exceeded",
-    "retryAfter": 3600
-  }
-}
-```
-
-**Test Results:**
-- Configuration tests: ✅ All limits correct
-- Error message tests: ✅ Proper format
-- getRateLimitInfo: ✅ Returns structure correctly
-- resetRateLimit: ✅ Works without errors
-- Key generator logic: ✅ Uses user ID or falls back to IP
-- Standard headers: ✅ Enabled, legacy disabled
-
-**Manual Testing:**
-- ✅ IP rate limiting active on all v2 routes
-- ✅ Auth endpoint limited to 5/min per IP
-- ✅ Swap endpoint limited to 10/min per user
-- ✅ Rate limit headers present in all responses
-- ✅ 429 error returned when limit exceeded
-- ✅ Redis connection stable
-
-**Security Improvements:**
-- Prevents DDoS attacks with IP limits
-- Prevents brute force with auth limits
-- Protects expensive operations with swap limits
-- Ensures fair usage with per-user limits
-- No IPv6 bypass vulnerability
-
-**Commits:**
-- [pending] v2.0: Implement Redis-based rate limiting system
-
-### Current Task 🔄
-Implement comprehensive error handling
-
-### November 13, 2025 - Session 14
-- Implemented comprehensive error handling system
-- Created custom error classes (12 types) for different HTTP status codes
-- Built error handler middleware with proper logging
-- Added asyncHandler wrapper for automatic error catching
-- Updated all services to use custom errors
-- Updated all controllers to use custom errors
-- Created 32 new error handling tests
-- All 83 tests passing ✅
-
-**Error Classes Implemented:**
-- AppError (base class)
-- BadRequestError (400)
-- UnauthorizedError (401)
-- ForbiddenError (403)
-- NotFoundError (404)
-- ConflictError (409)
-- ValidationError (422)
-- RateLimitError (429)
-- InternalError (500)
-- ExternalServiceError (502)
-- ServiceUnavailableError (503)
-- TimeoutError (504)
-
-**Error Handler Features:**
-- Centralized error handling middleware
-- Automatic error logging with pino
-- Development vs production error responses
-- Stack traces in development only
-- Proper HTTP status codes
-- Consistent error response format
-- AsyncHandler for automatic promise rejection handling
-- 404 handler for unknown routes
-
-**Services Updated:**
-- SwapService: ValidationError, NotFoundError
-- TokenPriceService: ValidationError, ExternalServiceError
-- OneClickService: ExternalServiceError, TimeoutError, InternalError
-- ApiKeyService: UnauthorizedError, ForbiddenError
-
-**Test Coverage:**
-- 20 tests for error classes
-- 12 tests for error handler middleware
-- All existing tests updated to expect custom errors
-- Total: 83 tests passing
-
-**Security Improvements:**
-- No internal error details exposed in production
-- Proper error codes for client handling
-- Operational vs non-operational error distinction
-- Complete audit trail via structured logging
-
-**Commits:**
-- [pending] v2.0: Implement comprehensive error handling system
-
-### Current Task 🔄
-Update documentation and prepare for production deployment
-
-### November 13, 2025 - Session 15
-- Completed git work from previous session
-- Committed comprehensive error handling system
-- Pushed all changes to agentfi-v2.0 branch
-- Verified all 83 tests passing
-- Updated PROJECT-INSTRUCTIONS.md with correct test command
-- Confirmed production readiness
-
-**Session Notes:**
-- All core development features now complete
-- Error handling: 83 tests passing ✅
-- Rate limiting: Redis-based multi-tier protection ✅
-- API key authentication: bcrypt-based security ✅
-- Webhooks: HMAC-SHA256 signatures ✅
-- Intent expiration: 24h auto-cleanup ✅
-- All code committed and pushed
-
-**Next Session Goals:**
-Ready to begin production deployment with the following priorities:
-
-1. **Environment Configuration**
-   - Create .env.production template
-   - Document required environment variables
-   - Set up production secrets management
-
-2. **Docker Setup**
-   - Create Dockerfile for API service
-   - Create Dockerfile for worker service
-   - Docker Compose configuration
-   - Multi-stage builds for optimization
-
-3. **CI/CD Pipeline**
-   - GitHub Actions workflow
-   - Automated testing on push
-   - Automated deployment to production
-   - Environment-specific deployments
-
-4. **Monitoring & Alerting**
-   - Application metrics (Prometheus/Grafana)
-   - Error tracking (Sentry or similar)
-   - Log aggregation (CloudWatch/DataDog)
-   - Uptime monitoring
-   - Alert thresholds
-
-5. **Load Testing**
-   - Rate limit verification under load
-   - Database performance testing
-   - Redis performance testing
-   - API response time benchmarks
-   - Concurrent user testing
-
-**Production Readiness Checklist:**
-- ✅ Authentication implemented
-- ✅ Rate limiting active
-- ✅ Error handling comprehensive
-- ✅ All tests passing (83/83)
-- ✅ Documentation complete
-- ⏳ Environment configuration
-- ⏳ Docker containerization
-- ⏳ CI/CD pipeline
-- ⏳ Monitoring setup
-- ⏳ Load testing
-
-**Commits:**
-- 8b43f05: v2.0: Implement comprehensive error handling system
-
-### Current Task 🔄
-Production deployment preparation - starting with environment configuration
+14. SDK libraries (TypeScript, Python)
+15. Analytics and reporting
+16. Advanced monitoring and alerts
