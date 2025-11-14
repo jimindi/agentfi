@@ -1,5 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import { SwapService } from '../services/SwapService';
+import TokenService from '../services/TokenService';
+import TokenPriceService from '../services/TokenPriceService';
 import { SwapRequest } from '../types/swap.types';
 import { PrismaClient } from '@prisma/client';
 import { UnauthorizedError } from '../errors';
@@ -7,8 +9,12 @@ import { UnauthorizedError } from '../errors';
 export class SwapController {
   private swapService: SwapService;
 
-  constructor(prisma: PrismaClient) {
-    this.swapService = new SwapService(prisma);
+  constructor(
+    prisma: PrismaClient,
+    tokenService: TokenService,
+    tokenPriceService: TokenPriceService
+  ) {
+    this.swapService = new SwapService(prisma, tokenService, tokenPriceService);
   }
 
   async executeSwap(req: Request, res: Response, next: NextFunction): Promise<void> {

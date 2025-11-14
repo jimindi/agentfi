@@ -2,16 +2,25 @@ import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { PrismaClient } from '@prisma/client';
 import { SwapService } from '../services/SwapService';
 import { ApiKeyService } from '../services/ApiKeyService';
+import { TokenService } from '../services/TokenService';
+import TokenPriceService from '../services/TokenPriceService';
 
 const prisma = new PrismaClient();
 
 describe('Integration Tests', () => {
   let swapService: SwapService;
+  let tokenService: TokenService;
+  let tokenPriceService: TokenPriceService;
   let testUserId: string;
   let testApiKeyId: string;
 
   beforeAll(async () => {
-    swapService = new SwapService(prisma);
+    // Initialize services
+    tokenService = new TokenService();
+    await tokenService.refreshTokenCache();
+    
+    tokenPriceService = new TokenPriceService(tokenService);
+    swapService = new SwapService(prisma, tokenService, tokenPriceService);
 
     // Create test user and API key
     const user = await prisma.user.create({
@@ -67,5 +76,9 @@ describe('Integration Tests', () => {
     expect(result.intentId).toBeDefined();
     expect(result.status).toBe('pending_deposit');
     expect(result.depositAddress).toBeDefined();
+    expect(result.from).toBeDefined();
+    expect(result.from.symbol).toBe('wNEAR');
+    expect(result.to).toBeDefined();
+    expect(result.to.symbol).toBe('USDC');
   });
 });

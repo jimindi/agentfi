@@ -1,11 +1,18 @@
 import { Router } from 'express';
 import { SwapController } from '../controllers/SwapController';
+import { TokenService } from '../services/TokenService';
+import TokenPriceService from '../services/TokenPriceService';
 import { authenticateApiKey } from '../middleware/auth.middleware';
 import { swapRateLimiter } from '../services/RateLimitService';
 import { PrismaClient } from '@prisma/client';
 
 const prisma = new PrismaClient();
-const swapController = new SwapController(prisma);
+
+// Initialize services
+const tokenService = new TokenService();
+const tokenPriceService = new TokenPriceService(tokenService);
+const swapController = new SwapController(prisma, tokenService, tokenPriceService);
+
 const router = Router();
 
 /**
@@ -20,13 +27,13 @@ router.post(
   '/',
   authenticateApiKey,
   swapRateLimiter,
-  (req, res) => swapController.executeSwap(req, res)
+  (req, res, next) => swapController.executeSwap(req, res, next)
 );
 
 // GET /v2/swap/:intentId (public)
 router.get(
   '/:intentId',
-  (req, res) => swapController.getSwapStatus(req, res)
+  (req, res, next) => swapController.getSwapStatus(req, res, next)
 );
 
 export default router;

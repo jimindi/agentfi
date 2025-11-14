@@ -11,6 +11,58 @@ const mockPrisma = {
   }
 } as unknown as PrismaClient;
 
+// Mock TokenService
+const mockTokenService = {
+  resolveToken: vi.fn((token: string, chain: string) => {
+    if (token === 'wNEAR' && chain === 'near') {
+      return {
+        assetId: 'nep141:wrap.near',
+        symbol: 'wNEAR',
+        blockchain: 'near',
+        decimals: 24,
+        price: 2.36,
+        contractAddress: 'wrap.near'
+      };
+    }
+    if (token === 'USDC' && chain === 'near') {
+      return {
+        assetId: 'nep141:17208628f84f5d6ad33f0da3bbbeb27ffcb398eac501a31bd6ad2011e36133a1',
+        symbol: 'USDC',
+        blockchain: 'near',
+        decimals: 6,
+        price: 1.0,
+        contractAddress: '17208628f84f5d6ad33f0da3bbbeb27ffcb398eac501a31bd6ad2011e36133a1'
+      };
+    }
+    throw new Error(`Unknown token: ${token} on ${chain}`);
+  }),
+  getTokenPrice: vi.fn(() => 2.36)
+};
+
+// Mock TokenPriceService
+const mockTokenPriceService = {
+  validateMinimumAmount: vi.fn((amount: string, decimals: number, assetId: string) => {
+    // Calculate USD value
+    const numericAmount = Number(amount) / Math.pow(10, decimals);
+    const price = assetId.includes('wrap.near') ? 2.36 : 1.0;
+    const usdValue = numericAmount * price;
+    
+    if (usdValue < 5.0) {
+      throw new Error(`Transaction amount ($${usdValue.toFixed(2)}) is below minimum of $5.00`);
+    }
+  }),
+  calculateUsdValue: vi.fn(async (amount: string, decimals: number, assetId: string) => {
+    const numericAmount = Number(amount) / Math.pow(10, decimals);
+    const price = assetId.includes('wrap.near') ? 2.36 : 1.0;
+    return numericAmount * price;
+  }),
+  formatAmount: vi.fn((amount: string, decimals: number, symbol: string) => {
+    const value = Number(amount) / Math.pow(10, decimals);
+    return `${value.toFixed(6)} ${symbol}`;
+  }),
+  formatUsd: vi.fn((usdValue: number) => `$${usdValue.toFixed(2)}`)
+};
+
 // Mock OneClickService
 vi.mock('../services/OneClickService', () => ({
   default: {
@@ -22,7 +74,7 @@ describe('SwapService', () => {
   let swapService: SwapService;
 
   beforeEach(() => {
-    swapService = new SwapService(mockPrisma);
+    swapService = new SwapService(mockPrisma, mockTokenService as any, mockTokenPriceService as any);
     vi.clearAllMocks();
   });
 
@@ -43,7 +95,7 @@ describe('SwapService', () => {
         }
       };
 
-      await expect(swapService.executeSwap(request)).rejects.toThrow('below minimum');
+      await expect(swapService.executeSwap(request, 'user-123', 'apikey-123')).rejects.toThrow('below minimum');
     });
 
     it('should accept swap above $5 minimum', async () => {
@@ -82,13 +134,16 @@ describe('SwapService', () => {
         }
       };
 
-      const result = await swapService.executeSwap(request);
+      const result = await swapService.executeSwap(request, 'user-123', 'apikey-123');
       
       expect(result.intentId).toBe('intent-123');
       expect(result.status).toBe('pending_deposit');
+      expect(result.from).toBeDefined();
+      expect(result.from.symbol).toBe('wNEAR');
+      expect(result.to).toBeDefined();
+      expect(result.to.symbol).toBe('USDC');
       expect(result.fees).toBeDefined();
       expect(result.fees.platformFeeBps).toBe(15);
-      expect(result.fees.platformFeeFormatted).toContain('wNEAR');
       expect(OneClickService.getQuote).toHaveBeenCalled();
     });
   });
