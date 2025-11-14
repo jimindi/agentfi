@@ -2,6 +2,7 @@ import OneClickService from './OneClickService';
 import TokenPriceService from './TokenPriceService';
 import { SwapRequest, SwapResult } from '../types/swap.types';
 import { PrismaClient } from '@prisma/client';
+import { NotFoundError, ValidationError } from '../errors';
 
 export class SwapService {
   private prisma: PrismaClient;
@@ -85,7 +86,7 @@ export class SwapService {
     });
 
     if (!intent) {
-      throw new Error('Intent not found');
+      throw new NotFoundError('Intent', intentId);
     }
 
     return {
@@ -126,8 +127,15 @@ export class SwapService {
     );
 
     if (usdValue < this.MINIMUM_USD_VALUE) {
-      throw new Error(
-        `Transaction amount ($${usdValue.toFixed(2)}) is below minimum of $${this.MINIMUM_USD_VALUE.toFixed(2)}`
+      throw new ValidationError(
+        `Transaction amount ($${usdValue.toFixed(2)}) is below minimum of $${this.MINIMUM_USD_VALUE.toFixed(2)}`,
+        {
+          actualUsd: usdValue,
+          minimumUsd: this.MINIMUM_USD_VALUE,
+          fromChain: request.from.chain,
+          fromToken: request.from.token,
+          fromAmount: request.from.amount
+        }
       );
     }
   }
@@ -143,7 +151,14 @@ export class SwapService {
     const assetId = assetMap[key];
     
     if (!assetId) {
-      throw new Error(`Unsupported token: ${key}`);
+      throw new ValidationError(
+        `Unsupported token: ${token} on ${chain}`,
+        {
+          chain,
+          token,
+          supportedTokens: Object.keys(assetMap)
+        }
+      );
     }
 
     return assetId;

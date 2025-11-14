@@ -2,6 +2,7 @@ import { Router } from 'express';
 import swapRoutes from './swap.routes';
 import authRoutes from './auth.routes';
 import { ipRateLimiter } from '../services/RateLimitService';
+import { errorHandler, notFoundHandler } from '../middleware';
 
 const router = Router();
 
@@ -26,5 +27,11 @@ router.get('/', (req, res) => {
     },
   });
 });
+
+// 404 handler for unknown v2 routes
+router.use(notFoundHandler);
+
+// Error handler (must be last)
+router.use(errorHandler);
 
 export default router;

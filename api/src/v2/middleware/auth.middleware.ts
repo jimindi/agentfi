@@ -1,6 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import { ApiKeyService } from '../services/ApiKeyService';
 import { PrismaClient } from '@prisma/client';
+import { UnauthorizedError } from '../errors';
 
 const prisma = new PrismaClient();
 
@@ -20,7 +21,7 @@ declare global {
 /**
  * Middleware to authenticate API requests
  */
-export async function authenticateApiKey(
+export async function authenticate(
   req: Request,
   res: Response,
   next: NextFunction
@@ -28,17 +29,11 @@ export async function authenticateApiKey(
   try {
     // Extract API key from Authorization header
     const authHeader = req.headers.authorization;
-
+    
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      res.status(401).json({
-        success: false,
-        error: {
-          code: 'MISSING_API_KEY',
-          message: 'API key is required. Provide it in Authorization header as "Bearer YOUR_KEY"',
-          statusCode: 401,
-        },
-      });
-      return;
+      throw new UnauthorizedError(
+        'API key is required. Provide it in Authorization header as "Bearer YOUR_KEY"'
+      );
     }
 
     const apiKey = authHeader.substring(7); // Remove "Bearer "
@@ -47,15 +42,7 @@ export async function authenticateApiKey(
     const result = await ApiKeyService.validateApiKey(prisma, apiKey);
 
     if (!result.valid || !result.keyData) {
-      res.status(401).json({
-        success: false,
-        error: {
-          code: 'INVALID_API_KEY',
-          message: 'API key is invalid or expired',
-          statusCode: 401,
-        },
-      });
-      return;
+      throw new UnauthorizedError('API key is invalid or expired');
     }
 
     // Attach auth data to request
@@ -67,15 +54,7 @@ export async function authenticateApiKey(
 
     next();
   } catch (error) {
-    console.error('Authentication error:', error);
-    res.status(500).json({
-      success: false,
-      error: {
-        code: 'AUTHENTICATION_ERROR',
-        message: 'Failed to authenticate request',
-        statusCode: 500,
-      },
-    });
+    next(error); // Pass to error handler
   }
 }
 
@@ -89,11 +68,11 @@ export async function optionalAuth(
 ): Promise<void> {
   try {
     const authHeader = req.headers.authorization;
-
+    
     if (authHeader && authHeader.startsWith('Bearer ')) {
       const apiKey = authHeader.substring(7);
       const result = await ApiKeyService.validateApiKey(prisma, apiKey);
-
+      
       if (result.valid && result.keyData) {
         req.auth = {
           userId: result.keyData.userId,
@@ -102,7 +81,7 @@ export async function optionalAuth(
         };
       }
     }
-
+    
     next();
   } catch (error) {
     // Don't block request on auth errors for optional auth

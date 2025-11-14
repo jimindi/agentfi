@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { SwapController } from '../controllers/SwapController';
 import { PrismaClient } from '@prisma/client';
+import { ValidationError, UnauthorizedError, NotFoundError } from '../errors';
 
 // Mock Prisma
 const mockPrisma = {
@@ -19,7 +20,7 @@ describe('SwapController', () => {
   });
 
   describe('executeSwap', () => {
-    it('should return 400 for amount below minimum', async () => {
+    it('should throw ValidationError for amount below minimum', async () => {
       const mockReq = {
         auth: {
           userId: 'test-user-id',
@@ -47,19 +48,15 @@ describe('SwapController', () => {
         json: vi.fn()
       } as any;
 
-      await controller.executeSwap(mockReq, mockRes);
+      const mockNext = vi.fn();
 
-      expect(mockRes.status).toHaveBeenCalledWith(400);
-      expect(mockRes.json).toHaveBeenCalledWith({
-        success: false,
-        error: expect.objectContaining({
-          code: 'AMOUNT_TOO_LOW',
-          message: expect.stringContaining('below minimum')
-        })
-      });
+      await controller.executeSwap(mockReq, mockRes, mockNext);
+
+      expect(mockNext).toHaveBeenCalled();
+      expect(mockNext.mock.calls[0][0]).toBeInstanceOf(ValidationError);
     });
 
-    it('should return 500 on unknown token error', async () => {
+    it('should throw ValidationError for unknown token', async () => {
       const mockReq = {
         auth: {
           userId: 'test-user-id',
@@ -70,7 +67,7 @@ describe('SwapController', () => {
           from: {
             chain: 'near',
             token: 'UNKNOWN',
-            amount: '10000000000000000000000000' // Large amount
+            amount: '1000000000000000000000000' // 1 token
           },
           to: {
             chain: 'near',
@@ -87,29 +84,21 @@ describe('SwapController', () => {
         json: vi.fn()
       } as any;
 
-      await controller.executeSwap(mockReq, mockRes);
+      const mockNext = vi.fn();
 
-      // Unknown decimals error returns 500 (not a validation error per se)
-      expect(mockRes.status).toHaveBeenCalledWith(500);
-      expect(mockRes.json).toHaveBeenCalled();
+      await controller.executeSwap(mockReq, mockRes, mockNext);
+
+      expect(mockNext).toHaveBeenCalled();
+      expect(mockNext.mock.calls[0][0]).toBeInstanceOf(ValidationError);
     });
 
-    it('should return 401 when not authenticated', async () => {
+    it('should throw UnauthorizedError when not authenticated', async () => {
       const mockReq = {
-        // No auth object
+        auth: undefined, // No auth
         body: {
-          from: {
-            chain: 'near',
-            token: 'wNEAR',
-            amount: '2200000000000000000000000'
-          },
-          to: {
-            chain: 'near',
-            token: 'USDC'
-          },
-          user: {
-            walletAddress: 'test.near'
-          }
+          from: { chain: 'near', token: 'wNEAR', amount: '1000000000000000000000000' },
+          to: { chain: 'near', token: 'USDC' },
+          user: { walletAddress: 'test.near' }
         }
       } as any;
 
@@ -118,27 +107,19 @@ describe('SwapController', () => {
         json: vi.fn()
       } as any;
 
-      await controller.executeSwap(mockReq, mockRes);
+      const mockNext = vi.fn();
 
-      expect(mockRes.status).toHaveBeenCalledWith(401);
-      expect(mockRes.json).toHaveBeenCalledWith({
-        success: false,
-        error: {
-          code: 'AUTHENTICATION_REQUIRED',
-          message: 'Authentication required'
-        }
-      });
+      await controller.executeSwap(mockReq, mockRes, mockNext);
+
+      expect(mockNext).toHaveBeenCalled();
+      expect(mockNext.mock.calls[0][0]).toBeInstanceOf(UnauthorizedError);
     });
   });
 
   describe('getSwapStatus', () => {
-    it('should return 404 when intent not found', async () => {
-      vi.mocked(mockPrisma.intent.findUnique).mockResolvedValue(null);
-
+    it('should throw NotFoundError when intent not found', async () => {
       const mockReq = {
-        params: {
-          intentId: 'nonexistent'
-        }
+        params: { intentId: 'nonexistent' }
       } as any;
 
       const mockRes = {
@@ -146,15 +127,14 @@ describe('SwapController', () => {
         json: vi.fn()
       } as any;
 
-      await controller.getSwapStatus(mockReq, mockRes);
+      const mockNext = vi.fn();
 
-      expect(mockRes.status).toHaveBeenCalledWith(404);
-      expect(mockRes.json).toHaveBeenCalledWith({
-        success: false,
-        error: expect.objectContaining({
-          code: 'INTENT_NOT_FOUND'
-        })
-      });
+      vi.mocked(mockPrisma.intent.findUnique).mockResolvedValue(null);
+
+      await controller.getSwapStatus(mockReq, mockRes, mockNext);
+
+      expect(mockNext).toHaveBeenCalled();
+      expect(mockNext.mock.calls[0][0]).toBeInstanceOf(NotFoundError);
     });
   });
 });

@@ -1,7 +1,8 @@
-import { Request, Response } from 'express';
+import { Request, Response, NextFunction } from 'express';
 import { SwapService } from '../services/SwapService';
 import { SwapRequest } from '../types/swap.types';
 import { PrismaClient } from '@prisma/client';
+import { UnauthorizedError } from '../errors';
 
 export class SwapController {
   private swapService: SwapService;
@@ -10,18 +11,11 @@ export class SwapController {
     this.swapService = new SwapService(prisma);
   }
 
-  async executeSwap(req: Request, res: Response): Promise<void> {
+  async executeSwap(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
       // Auth middleware ensures req.auth exists
       if (!req.auth) {
-        res.status(401).json({
-          success: false,
-          error: {
-            code: 'AUTHENTICATION_REQUIRED',
-            message: 'Authentication required'
-          }
-        });
-        return;
+        throw new UnauthorizedError('Authentication required');
       }
 
       const swapRequest: SwapRequest = req.body;
@@ -37,43 +31,12 @@ export class SwapController {
         success: true,
         data: result
       });
-    } catch (error: any) {
-      // Check if it's a validation error (minimum amount)
-      if (error.message.includes('below minimum')) {
-        res.status(400).json({
-          success: false,
-          error: {
-            code: 'AMOUNT_TOO_LOW',
-            message: error.message
-          }
-        });
-        return;
-      }
-
-      // Check if it's an unsupported token error
-      if (error.message.includes('Unsupported token')) {
-        res.status(400).json({
-          success: false,
-          error: {
-            code: 'UNSUPPORTED_TOKEN',
-            message: error.message
-          }
-        });
-        return;
-      }
-
-      // Generic server error
-      res.status(500).json({
-        success: false,
-        error: {
-          code: 'SWAP_FAILED',
-          message: error.message
-        }
-      });
+    } catch (error) {
+      next(error);
     }
   }
 
-  async getSwapStatus(req: Request, res: Response): Promise<void> {
+  async getSwapStatus(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
       const { intentId } = req.params;
       const status = await this.swapService.getSwapStatus(intentId);
@@ -82,14 +45,8 @@ export class SwapController {
         success: true,
         data: status
       });
-    } catch (error: any) {
-      res.status(404).json({
-        success: false,
-        error: {
-          code: 'INTENT_NOT_FOUND',
-          message: error.message
-        }
-      });
+    } catch (error) {
+      next(error);
     }
   }
 }

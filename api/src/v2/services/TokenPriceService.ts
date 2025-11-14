@@ -1,8 +1,9 @@
+import { ExternalServiceError, ValidationError } from '../errors';
+
 /**
  * Token Price Service
  * Fetches USD prices for tokens from external APIs
  */
-
 interface TokenPrice {
   tokenId: string;
   priceUsd: number;
@@ -29,8 +30,9 @@ class TokenPriceService {
     try {
       // Fetch from Defuse token API
       const response = await fetch('https://api-mng-console.chaindefuser.com/api/tokens');
+      
       if (!response.ok) {
-        throw new Error(`Token API returned ${response.status}`);
+        throw new ExternalServiceError('Token Price API', `HTTP ${response.status}`);
       }
 
       const data = await response.json();
@@ -42,7 +44,10 @@ class TokenPriceService {
       });
 
       if (!tokenData) {
-        throw new Error(`Price not found for ${chain}:${token}`);
+        throw new ValidationError(
+          `Price not available for ${token} on ${chain}`,
+          { chain, token }
+        );
       }
 
       const priceUsd = parseFloat(tokenData.price);
@@ -56,6 +61,11 @@ class TokenPriceService {
 
       return priceUsd;
     } catch (error) {
+      // Re-throw if already our custom error
+      if (error instanceof ExternalServiceError || error instanceof ValidationError) {
+        throw error;
+      }
+
       console.error('Error fetching token price:', error);
       
       // Fallback prices (approximate)
@@ -71,7 +81,7 @@ class TokenPriceService {
         return fallbackPrice;
       }
 
-      throw new Error(`Could not determine price for ${chain}:${token}`);
+      throw new ExternalServiceError('Token Price API', 'Unable to fetch price');
     }
   }
 
@@ -114,7 +124,10 @@ class TokenPriceService {
     const decimals = decimalsMap[key];
     
     if (decimals === undefined) {
-      throw new Error(`Unknown decimals for ${key}`);
+      throw new ValidationError(
+        `Unknown decimals for token: ${token} on ${chain}`,
+        { chain, token, supportedTokens: Object.keys(decimalsMap) }
+      );
     }
 
     return decimals;

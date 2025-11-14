@@ -127,20 +127,19 @@ describe('ApiKeyService', () => {
       const result = await ApiKeyService.validateApiKey(prisma, created.apiKey);
       expect(result.valid).toBe(false);
     });
-
     it('should not revoke key for wrong user', async () => {
       const created = await ApiKeyService.createApiKey(prisma, {
         userId: testUserId,
         name: 'Wrong User Test',
       });
-
-      const success = await ApiKeyService.revokeApiKey(
-        prisma,
-        created.keyId,
-        '00000000-0000-0000-0000-000000000000'
-      );
-
-      expect(success).toBe(false);
+      
+      await expect(
+        ApiKeyService.revokeApiKey(
+          prisma,
+          created.keyId,
+          '00000000-0000-0000-0000-000000000000'
+        )
+      ).rejects.toThrow('You do not have permission to revoke this API key');
     });
   });
 });

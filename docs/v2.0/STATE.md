@@ -1,7 +1,7 @@
 # Project State - Quick Reference
 **Last Updated:** November 13, 2025  
 **Branch:** agentfi-v2.0  
-**Status:** ✅ Rate limiting implemented - production ready
+**Status:** ✅ Error handling implemented - production ready
 
 ## Quick Status
 
@@ -20,88 +20,104 @@
 - ✅ Webhook notifications - Real-time swap completion alerts
 - ✅ API key authentication - Secure bcrypt-based auth
 - ✅ Rate limiting - Redis-based multi-tier protection
+- ✅ Error handling - Comprehensive custom error system
 
-**Next Task:** Comprehensive error handling
+**Next Task:** Production deployment
 
 ## Latest Achievement
 
-### ✅ Rate Limiting System
+### ✅ Comprehensive Error Handling
 
-**Feature:** Redis-based multi-tier rate limiting with proper IPv6 support
+**Feature:** Custom error classes with centralized error handling middleware
 
 **Implementation:**
-- RateLimitService: Redis-backed rate limiting for all endpoints
-- Multiple tiers: IP-based, user-based, endpoint-specific
-- Express-rate-limit integration with proper IPv6 handling
-- Standard RateLimit headers in all responses
+- 12 custom error classes for different HTTP status codes
+- Centralized error handler middleware with logging
+- AsyncHandler wrapper for automatic promise rejection handling
+- 404 handler for unknown routes
+- Updated all services and controllers to use custom errors
 
-**Rate Limit Tiers:**
-1. **IP-based** (all v2 endpoints): 100 requests/hour per IP
-2. **Auth endpoints**: 5 requests/minute per IP (prevents brute force)
-3. **API key operations**: 1000 requests/hour per user
-4. **Swap endpoint**: 10 swaps/minute per user (protects expensive ops)
+**Error Classes:**
+1. **AppError** (base): Custom error with statusCode, code, isOperational
+2. **BadRequestError** (400): Client error in request
+3. **UnauthorizedError** (401): Missing/invalid authentication
+4. **ForbiddenError** (403): Authenticated but not authorized
+5. **NotFoundError** (404): Resource not found
+6. **ConflictError** (409): Resource conflict
+7. **ValidationError** (422): Input validation failed
+8. **RateLimitError** (429): Rate limit exceeded
+9. **InternalError** (500): Unexpected server error (non-operational)
+10. **ExternalServiceError** (502): External service failure
+11. **ServiceUnavailableError** (503): Temporary unavailability
+12. **TimeoutError** (504): External service timeout
 
-**Key Features:**
-- Redis-backed storage for distributed rate limiting
-- Proper IPv6 address handling (no bypass vulnerabilities)
-- Standard RateLimit-* headers in responses
-- Graceful degradation if Redis unavailable
-- User-based limits when authenticated, IP fallback otherwise
-
-**Headers Returned:**
-```
-RateLimit-Policy: 10;w=60
-RateLimit-Limit: 10
-RateLimit-Remaining: 9
-RateLimit-Reset: 60
-```
-
-**Error Response (429):**
+**Error Response Format:**
 ```json
 {
   "success": false,
   "error": {
-    "code": "RATE_LIMIT_EXCEEDED",
-    "message": "API rate limit exceeded",
-    "retryAfter": 3600
+    "code": "VALIDATION_ERROR",
+    "message": "Transaction amount ($4.50) is below minimum of $5.00",
+    "details": {
+      "actualUsd": 4.5,
+      "minimumUsd": 5.0
+    },
+    "stack": "..." // Only in development
   }
 }
 ```
 
-**Test Results:**
-- 51 tests passing (15 new rate limiting tests)
-- Manual testing verified all tiers working
-- IPv6 vulnerability fixed
-- Redis connection stable
+**Key Features:**
+- Operational vs non-operational error distinction
+- Production mode hides sensitive error details
+- Stack traces only in development
+- Structured logging with pino (redacts sensitive data)
+- Consistent error response format across all endpoints
+- Proper HTTP status codes for each error type
+- Error details for debugging (when appropriate)
+
+**Services Updated:**
+- SwapService: ValidationError for minimum amount, NotFoundError for intents
+- TokenPriceService: ValidationError for unknown tokens, ExternalServiceError for API failures
+- OneClickService: ExternalServiceError, TimeoutError with 30s timeout
+- ApiKeyService: UnauthorizedError for invalid keys, ForbiddenError for unauthorized actions
+
+**Test Coverage:**
+- 20 tests for error classes (inheritance, properties, messages)
+- 12 tests for error handler middleware (production/dev modes, asyncHandler)
+- All 83 tests passing ✅
 
 **Security Benefits:**
-- Prevents DDoS attacks (IP-based limits)
-- Prevents brute force (auth endpoint limits)
-- Protects expensive operations (swap limits)
-- Fair usage enforcement (per-user limits)
+- No sensitive data in production errors
+- Complete audit trail via logging
+- Client-friendly error codes
+- Proper error categorization
 
 ## Previous Achievements
 
+### ✅ Rate Limiting System
+- Redis-based multi-tier protection
+- IP-based (100/hour), auth endpoints (5/min), swaps (10/min)
+- Standard RateLimit-* headers
+- 51 tests passing before error handling
+
 ### ✅ API Key Authentication
-- Complete key management system with bcrypt hashing
-- User-scoped operations with security best practices
+- bcrypt hashing, user-scoped operations
 - 36 tests passing before rate limiting
 
 ### ✅ Intent Expiration System
-- Automatic cleanup of abandoned swaps after 24 hours
+- Automatic cleanup after 24 hours
 - Hourly cleanup prevents database bloat
 
 ### ✅ Webhook Notifications
-- Real-time HTTP callbacks with HMAC-SHA256 signatures
-- Retry logic (3 attempts, 5 second delay)
+- HMAC-SHA256 signatures
+- Retry logic (3 attempts, 5s delay)
 
 ### ✅ Fee Breakdown & Minimum Validation
-- Transparent platform + network fee display
-- $5 USD minimum transaction amount
+- Transparent fees, $5 USD minimum
 
 ### ✅ Direct Delivery & Platform Fees
-- Funds go directly to user wallet
-- Platform fee: 15 bps via appFees parameter
+- Funds to user wallet, 15 bps via appFees
 
 ## Service Account
 
@@ -124,39 +140,47 @@ RateLimit-Reset: 60
 11. Worker polls every 20s, updates on SUCCESS
 12. Worker sends webhook notification
 13. Worker expires intents after 24h if no deposit
+14. Errors are handled gracefully with proper status codes
 
 ## Project Structure
 ```
 /root/agentfi-sdk/
 ├── api/src/v2/
+│   ├── errors/
+│   │   ├── AppError.ts                ✅ NEW - Custom error classes
+│   │   └── index.ts                   ✅ NEW - Error exports
 │   ├── services/
-│   │   ├── OneClickService.ts       ✅ Fee capture
-│   │   ├── SwapService.ts           ✅ User/key tracking
-│   │   ├── TokenPriceService.ts     ✅ USD validation
-│   │   ├── WebhookService.ts        ✅ Notifications
-│   │   ├── ApiKeyService.ts         ✅ Auth
-│   │   └── RateLimitService.ts      ✅ NEW - Multi-tier limits
+│   │   ├── OneClickService.ts         ✅ Updated - Custom errors
+│   │   ├── SwapService.ts             ✅ Updated - Custom errors
+│   │   ├── TokenPriceService.ts       ✅ Updated - Custom errors
+│   │   ├── WebhookService.ts          ✅ Notifications
+│   │   ├── ApiKeyService.ts           ✅ Updated - Custom errors
+│   │   └── RateLimitService.ts        ✅ Multi-tier limits
 │   ├── controllers/
-│   │   ├── SwapController.ts        ✅ Auth + rate limited
-│   │   └── ApiKeyController.ts      ✅ Rate limited
+│   │   ├── SwapController.ts          ✅ Updated - Error handling
+│   │   └── ApiKeyController.ts        ✅ Auth
 │   ├── middleware/
-│   │   └── auth.middleware.ts       ✅ Authentication
+│   │   ├── auth.middleware.ts         ✅ Updated - Custom errors
+│   │   ├── errorHandler.ts            ✅ NEW - Error handling
+│   │   └── index.ts                   ✅ NEW - Exports
 │   ├── routes/
-│   │   ├── index.ts                 ✅ IP rate limiting
-│   │   ├── swap.routes.ts           ✅ Swap rate limiting
-│   │   └── auth.routes.ts           ✅ Auth rate limiting
+│   │   ├── index.ts                   ✅ Updated - Error handlers
+│   │   ├── swap.routes.ts             ✅ Rate limiting
+│   │   └── auth.routes.ts             ✅ Rate limiting
 │   ├── workers/
-│   │   ├── IntentMonitor.ts         ✅ Expiration + webhooks
-│   │   └── index.ts                 ✅ Working
-│   └── tests/                       ✅ 51 passing
-│       ├── OneClickService.test.ts       (2 tests)
-│       ├── SwapService.test.ts           (4 tests)
-│       ├── SwapController.test.ts        (4 tests)
-│       ├── TokenPriceService.test.ts     (7 tests)
-│       ├── WebhookService.test.ts        (9 tests)
-│       ├── ApiKeyService.test.ts         (9 tests)
-│       ├── RateLimitService.test.ts      (15 tests) ✅ NEW
-│       └── integration.test.ts           (1 test)
+│   │   ├── IntentMonitor.ts           ✅ Expiration + webhooks
+│   │   └── index.ts                   ✅ Working
+│   └── tests/                         ✅ 83 passing
+│       ├── errors.test.ts             ✅ NEW - 20 tests
+│       ├── errorHandler.test.ts       ✅ NEW - 12 tests
+│       ├── OneClickService.test.ts    (2 tests)
+│       ├── SwapService.test.ts        (4 tests - updated)
+│       ├── SwapController.test.ts     (4 tests - updated)
+│       ├── TokenPriceService.test.ts  (7 tests - updated)
+│       ├── WebhookService.test.ts     (9 tests)
+│       ├── ApiKeyService.test.ts      (9 tests - updated)
+│       ├── RateLimitService.test.ts   (15 tests)
+│       └── integration.test.ts        (1 test)
 └── docs/v2.0/
     ├── STATE.md                     ✅ This file
     ├── PROGRESS.md                  ✅ Updated
@@ -170,17 +194,19 @@ RateLimit-Reset: 60
 ### High Priority
 1. ✅ Implement API key authentication
 2. ✅ Implement rate limiting
-3. Comprehensive error handling
+3. ✅ Comprehensive error handling
 4. Production deployment
+5. Load testing
 
 ### Medium Priority
-5. Multi-token support beyond wNEAR/USDC
-6. Cross-chain swaps (ETH, SOL, BTC)
+6. Multi-token support beyond wNEAR/USDC
+7. Cross-chain swaps (ETH, SOL, BTC)
+8. Advanced monitoring and alerting
 
 ### Future
-7. SDK libraries (TypeScript, Python)
-8. Dashboard for monitoring
-9. Analytics and reporting
+9. SDK libraries (TypeScript, Python)
+10. Dashboard for monitoring
+11. Analytics and reporting
 
 ## Running Services
 
@@ -194,18 +220,31 @@ Start worker:
 cd /root/agentfi-sdk/api && npm run worker
 ```
 
-Test rate limiting:
+Test error handling:
 ```bash
-# Should show RateLimit headers
-curl -i http://localhost:3000/v2
+# Test validation error (amount too low)
+curl -X POST http://localhost:3000/v2/swap \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer YOUR_API_KEY" \
+  -d '{
+    "from": {"chain": "near", "token": "wNEAR", "amount": "1000000000000000000000"},
+    "to": {"chain": "near", "token": "USDC"},
+    "user": {"walletAddress": "test.near"}
+  }'
 
-# Test auth rate limit (5/min)
-for i in {1..6}; do
-  curl -i -X POST http://localhost:3000/v2/auth/api-key \
-    -H "Content-Type: application/json" \
-    -d "{\"email\": \"test$i@example.com\", \"name\": \"Test $i\"}"
-done
-# Request 6 should return 429
+# Expected: 422 ValidationError - below $5 minimum
+
+# Test unauthorized error (no API key)
+curl -X POST http://localhost:3000/v2/swap \
+  -H "Content-Type: application/json" \
+  -d '{"from": {...}, "to": {...}}'
+
+# Expected: 401 UnauthorizedError
+
+# Test not found error
+curl http://localhost:3000/v2/swap/nonexistent-id
+
+# Expected: 404 NotFoundError
 ```
 
 ## Success Metrics
@@ -221,10 +260,13 @@ done
 ✅ Automatic cleanup: Expired intents removed after 24h
 ✅ Clean logs: No spam from abandoned swaps
 ✅ Status tracking: Complete swap details
-✅ Test coverage: 51 tests passing
+✅ Test coverage: 83 tests passing
 ✅ Security: HMAC-SHA256 signatures
 ✅ Authentication: bcrypt-based API keys
 ✅ Authorization: User-scoped operations
 ✅ Rate limiting: Multi-tier protection
 ✅ DDoS protection: IP-based limits
 ✅ Fair usage: Per-user limits enforced
+✅ Error handling: Comprehensive custom error system
+✅ Production ready: Proper error responses
+✅ Developer friendly: Clear error codes and messages

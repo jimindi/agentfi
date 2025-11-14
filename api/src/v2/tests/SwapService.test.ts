@@ -121,7 +121,7 @@ describe('SwapService', () => {
     it('should throw error if intent not found', async () => {
       vi.mocked(mockPrisma.intent.findUnique).mockResolvedValue(null);
 
-      await expect(swapService.getSwapStatus('nonexistent')).rejects.toThrow('Intent not found');
+      await expect(swapService.getSwapStatus("nonexistent")).rejects.toThrow("Intent with ID");
     });
   });
 });

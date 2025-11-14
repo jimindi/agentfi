@@ -1,6 +1,7 @@
 import bcrypt from 'bcrypt';
 import crypto from 'crypto';
 import { PrismaClient } from '@prisma/client';
+import { UnauthorizedError, ForbiddenError } from '../errors';
 
 export interface CreateApiKeyParams {
   userId: string;
@@ -152,10 +153,24 @@ export class ApiKeyService {
     keyId: string,
     userId: string
   ): Promise<boolean> {
+    // First check if key exists and belongs to user
+    const apiKey = await prisma.apiKey.findUnique({
+      where: { id: keyId },
+      select: { userId: true },
+    });
+
+    if (!apiKey) {
+      throw new UnauthorizedError('API key not found');
+    }
+
+    if (apiKey.userId !== userId) {
+      throw new ForbiddenError('You do not have permission to revoke this API key');
+    }
+
     const result = await prisma.apiKey.updateMany({
       where: {
         id: keyId,
-        userId, // Ensure user owns the key
+        userId,
       },
       data: {
         isActive: false,
