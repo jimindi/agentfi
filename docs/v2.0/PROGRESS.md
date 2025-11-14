@@ -1,6 +1,6 @@
 # Development Progress
 
-## Current Phase: Production Preparation
+## Current Phase: Multi-Token Support Implementation
 
 ### Completed ✅
 - Created v2.0 branch
@@ -35,12 +35,15 @@
 - Intent expiration system - auto-expires after 24h
 - Cleaned up 15 abandoned test intents
 - Worker logs optimized - removed spam
-- **API key authentication - bcrypt-based security**
-- **Rate limiting - Redis multi-tier protection**
-- **Comprehensive error handling - 12 custom error classes**
+- API key authentication - bcrypt-based security
+- Rate limiting - Redis multi-tier protection
+- Comprehensive error handling - 12 custom error classes
+- **TokenService - Dynamic token discovery (30 tests passing)**
+- **TokenPriceService - Updated to use TokenService (15 tests passing)**
+- **Type definitions - Updated for multi-token support**
 
 ### Current Task 🔄
-Implement multi-token support (117+ tokens across 22+ chains)
+Update SwapService to use TokenService for multi-token resolution
 
 ### Next Steps 📋
 1. ✅ Implement OneClickService
@@ -61,97 +64,78 @@ Implement multi-token support (117+ tokens across 22+ chains)
 16. ✅ Implement API key authentication
 17. ✅ Add rate limiting
 18. ✅ Comprehensive error handling
-19. **Implement multi-token support** ⬅️ CURRENT
+19. **Multi-token support (IN PROGRESS)** ⬅️ CURRENT
+    - ✅ TokenService created with caching
+    - ✅ TokenPriceService updated
+    - ✅ Type definitions updated
+    - ⏳ SwapService needs updating
+    - ⏳ TokenController needs creating
+    - ⏳ Token routes need adding
+    - ⏳ Tests need updating
 20. Production deployment
 
 ## Session History
 
-### Sessions 1-14 (Nov 10-13)
-[Sessions documented in git history and below]
-
-### November 13, 2025 - Session 15
-- Completed git work from previous session
-- Committed comprehensive error handling system
-- Pushed all changes to agentfi-v2.0 branch
-- Verified all 83 tests passing
-- Updated PROJECT-INSTRUCTIONS.md with correct test command
-- Confirmed production readiness
-
-**Session Notes:**
-- All core development features now complete
-- Error handling: 83 tests passing ✅
-- Rate limiting: Redis-based multi-tier protection ✅
-- API key authentication: bcrypt-based security ✅
-- Webhooks: HMAC-SHA256 signatures ✅
-- Intent expiration: 24h auto-cleanup ✅
-- All code committed and pushed
-
-**Commits:**
-- 8b43f05: v2.0: Implement comprehensive error handling system
+### Sessions 1-15 (Nov 10-14)
+[Sessions documented in git history]
 
 ### November 14, 2025 - Session 16
-- Analyzed OneClick token support (117 tokens across 22+ blockchains)
-- Identified current limitation: hardcoded wNEAR/USDC only
-- Discovered native tokens (BTC, ETH, SOL) don't have contractAddress
-- Designed multi-token support architecture
-- Created comprehensive implementation plan
-- Decided on hybrid input approach (symbol+chain OR assetId)
-- Planned token discovery endpoint (GET /v2/tokens)
+**Focus:** Multi-token support implementation (Part 1)
+
+**Completed:**
+1. Created comprehensive implementation plan (MULTI-TOKEN-IMPLEMENTATION.md)
+2. Implemented TokenService with dynamic token discovery
+   - Fetches 117+ tokens from OneClick API
+   - In-memory caching with 1-hour TTL
+   - Hybrid resolution: symbol+chain OR assetId
+   - Handles native tokens (no contractAddress) and contract tokens
+   - 30 comprehensive tests (all passing)
+3. Updated type definitions for multi-token support
+   - Made contractAddress optional in all types
+   - Enhanced SwapRequest to support hybrid input
+   - Enhanced SwapResult with full token details
+   - Added TokenInfo and FeeBreakdown types
+4. Updated TokenPriceService
+   - Now uses TokenService for dynamic pricing
+   - Removed hardcoded prices and decimals
+   - Uses real-time prices from OneClick
+   - 15 tests passing
+
+**Test Status:**
+- TokenService: 30 tests passing ✅
+- TokenPriceService: 15 tests passing ✅
+- Total new tests: 45
+- Breaking tests: 5 (SwapService, SwapController, integration)
+  - All failures due to SwapService using old TokenPriceService API
+  - Expected - SwapService update is next task
 
 **Key Decisions:**
-
-**Token Categories:**
-1. Native tokens (BTC, ETH, SOL) - no contractAddress
-2. Contract tokens (USDC, wNEAR, wBTC) - have contractAddress
-
-**Input Format (Hybrid):**
-- Simple: `{"chain": "near", "token": "USDC"}`
-- Explicit: `{"token": "nep141:17208628..."}`
-
-**Output Format:**
-- Always include full token details
-- contractAddress optional (only for contract tokens)
-- Include assetId as primary identifier
-- Enhanced verification for DEX builders
-
-**Token Resolution:**
-- Check if input is assetId (contains ":")
-- If symbol: lookup with optional chain filter
-- Handle ambiguous symbols gracefully
-- Provide clear error messages with available options
-
-**Token Discovery:**
-- GET /v2/tokens - list all tokens
-- GET /v2/tokens?chain=near - filter by chain
-- GET /v2/tokens?symbol=USDC - filter by symbol
-- Cache with 1-hour TTL, refresh every 30 min
-
-**Implementation Plan Created:**
-1. TokenService - fetch/cache tokens from OneClick
-2. Update types - make contractAddress optional
-3. Update TokenPriceService - use OneClick prices
-4. Update SwapService - dynamic token resolution
-5. TokenController - token discovery endpoints
-6. Tests - native tokens, contract tokens, cross-chain
-7. Documentation - API examples, SDK guides
-
-**Benefits for DEX Builders:**
-- Flexibility: simple or explicit input
-- Verification: contractAddress in responses
-- Discovery: /v2/tokens endpoint for UIs
-- No maintenance: auto-updates from OneClick
-- Cross-chain ready: all 22+ chains supported
+- Hybrid input format: Accept both symbol+chain and assetId
+- Optional contractAddress: Native tokens don't have contracts
+- Dynamic pricing: Use OneClick cache instead of external APIs
+- Token resolution: Detect ambiguous symbols, provide helpful errors
 
 **Next Session Goals:**
-1. Implement TokenService with caching
-2. Update type definitions
-3. Update SwapService for multi-token
-4. Add token discovery endpoints
-5. Write comprehensive tests
-6. Update documentation
+1. Update SwapService to use TokenService
+   - Remove hardcoded wNEAR/USDC logic
+   - Implement token resolution from user input
+   - Build enhanced responses with token details
+2. Create TokenController for GET /v2/tokens
+3. Add token routes with rate limiting
+4. Update all failing tests
+5. Run complete test suite
 
-### Current Task 🔄
-Implement multi-token support (117+ tokens, 22+ chains)
+**Files Modified:**
+- api/src/v2/services/TokenService.ts (NEW)
+- api/src/v2/services/TokenPriceService.ts (UPDATED)
+- api/src/v2/tests/TokenService.test.ts (NEW)
+- api/src/v2/tests/TokenPriceService.test.ts (UPDATED)
+- api/src/v2/types/index.ts (NEW)
+- api/src/v2/types/swap.types.ts (UPDATED)
+- docs/v2.0/MULTI-TOKEN-IMPLEMENTATION.md (NEW)
+
+**Commits:**
+- 37bcb50: v2.0: Implement TokenService with caching and token resolution
 
 ## Key Learnings
 - OneClick API uses `/v0/status?depositAddress=X`
@@ -174,75 +158,79 @@ Implement multi-token support (117+ tokens, 22+ chains)
 - **Native tokens don't have contractAddress**
 - **Hybrid input format (symbol+chain OR assetId) provides flexibility**
 - **Token discovery endpoint essential for DEX builders**
+- **Dynamic token caching eliminates hardcoded logic**
+- **TokenService centralizes all token operations**
 
 ## Key Decisions
 
-### Multi-Token Support
-**Decision:** Support all 117+ tokens via dynamic discovery from OneClick
-**Input Format:** Hybrid - accept symbol+chain OR assetId
-**Token Resolution:** Check for assetId format, otherwise lookup by symbol+chain
-**Ambiguity Handling:** Require chain specification if multiple matches
-**Discovery:** Provide GET /v2/tokens endpoint with filtering
-**Caching:** 1-hour TTL with 30-minute refresh cycle
-**Impact:** Enables DEX builders, cross-chain swaps, no hardcoded tokens
+### Multi-Token Support Architecture
+**Decision:** Use TokenService as single source of truth for all token data
+**Rationale:** Eliminates hardcoding, enables dynamic discovery, simplifies maintenance
+**Impact:** All services query TokenService instead of hardcoding token info
 
-### Native vs Contract Tokens
-**Decision:** Make contractAddress optional in all types and responses
-**Native Tokens:** BTC, ETH, SOL, etc. - no contractAddress
-**Contract Tokens:** USDC, wNEAR, etc. - include contractAddress
-**Verification:** Always include assetId as primary identifier
-**Impact:** Supports all token types, enables sophisticated verification
+### Token Resolution Strategy
+**Decision:** Support hybrid input (symbol+chain OR assetId)
+**Simple mode:** `{chain: "near", token: "USDC"}` - easy for developers
+**Explicit mode:** `{token: "nep141:17208628..."}` - precise, no ambiguity
+**Impact:** Flexible API suitable for both simple and advanced use cases
 
-### Intent Expiration
-**Decision:** 24-hour timeout with hourly cleanup
-**Check Frequency:** Immediate on startup + hourly
-**Status Change:** pending_deposit → expired
-**Impact:** Clean database, reduced API calls, clear logs
+### Contract Address Handling
+**Decision:** Make contractAddress optional throughout the system
+**Native tokens:** BTC, ETH, SOL - no contractAddress
+**Contract tokens:** USDC, wNEAR - include contractAddress
+**Impact:** Supports all token types without special cases
 
-### Webhook Implementation
-**Decision:** HMAC-SHA256 signatures with 3 retry attempts
-**Retry Delay:** 5 seconds between attempts
-**Timeout:** 10 seconds per attempt
-**Impact:** Reliable delivery with security verification
+### Token Price Source
+**Decision:** Use OneClick API prices instead of external price feeds
+**OneClick provides:** Real-time prices with every token
+**Benefits:** Single source, no additional API calls, consistent with quotes
+**Impact:** Removed dependency on external price APIs
 
-### Fee Transparency
-**Decision:** Show platform fee and network fee separately in API response
-**Method:** Capture from OneClick quote + calculate 15 bps
-**Format:** Both raw amounts and human-readable formatted strings
-**Impact:** Users can see exactly what they're paying
-
-### Recipient Type Fix
-**Decision:** Use `recipientType: "DESTINATION_CHAIN"` for direct delivery
-**Impact:** Eliminates withdrawal step, better UX
-
-### Platform Fee Implementation
-**Decision:** 15 basis points (0.15%) via OneClick appFees
-**Status:** ✅ Verified working with transparent display
-
-### Minimum Transaction Amount
-**Decision:** $5 USD minimum per swap
-**Method:** Real-time price validation via TokenPriceService
-**Status:** ✅ Implemented and tested
-
-### Stuck USDC from Old Account
-**Decision:** Document but don't attempt recovery
-**Amount:** 0.053174 USDC in intents.near
-**Impact:** None - new account works correctly
+### Previous Decisions
+[See earlier sections for webhook, fee, auth, and rate limiting decisions]
 
 ## Next Session Goals
 
 ### Immediate (Session 17)
-1. Implement TokenService with caching
-2. Create and update type definitions
-3. Update TokenPriceService to use OneClick prices
-4. Begin updating SwapService
+**Priority:** Complete multi-token support implementation
 
-### Short Term
-5. Complete SwapService updates
-6. Create TokenController
-7. Add token routes
-8. Write comprehensive tests
-9. Update documentation
+1. **Update SwapService** (HIGH PRIORITY)
+   - Remove all hardcoded wNEAR/USDC logic
+   - Add TokenService dependency injection
+   - Implement resolveToken() calls for from/to tokens
+   - Build enhanced SwapResult with full token details
+   - Update validateMinimumAmount to use new TokenPriceService
+   - Fix all breaking tests
+
+2. **Create TokenController**
+   - Implement GET /v2/tokens endpoint
+   - Add filtering by chain and symbol
+   - Add GET /v2/tokens/chains endpoint
+   - Return proper error responses
+
+3. **Add Token Routes**
+   - Create token.routes.ts
+   - Add rate limiting (100/hour per IP)
+   - Integrate into main v2 router
+
+4. **Update Tests**
+   - Fix SwapService.test.ts (use mocked TokenService)
+   - Fix SwapController.test.ts (use mocked services)
+   - Fix integration.test.ts (mock TokenService.refreshTokenCache)
+   - Add TokenController.test.ts
+   - Verify all 121+ tests passing
+
+5. **Initialize TokenService in app.ts**
+   - Create TokenService instance on startup
+   - Call refreshTokenCache() before server starts
+   - Set up 30-minute refresh interval
+   - Add proper error handling for cache refresh
+
+### Short Term (Session 18)
+6. Test multi-token swaps manually
+7. Update documentation with examples
+8. Update API documentation
+9. Create token list documentation
 
 ### Medium Term
 10. Production deployment setup
@@ -254,3 +242,133 @@ Implement multi-token support (117+ tokens, 22+ chains)
 14. SDK libraries (TypeScript, Python)
 15. Analytics and reporting
 16. Advanced monitoring and alerts
+
+## Implementation Notes for Next Session
+
+### SwapService Changes Needed
+```typescript
+// OLD (hardcoded)
+private getAssetId(chain: string, token: string): string {
+  const assetIds: Record<string, string> = {
+    'near:wNEAR': 'nep141:wrap.near',
+    'near:USDC': 'nep141:17208628...'
+  };
+  return assetIds[`${chain}:${token}`];
+}
+
+// NEW (dynamic)
+constructor(
+  private prisma: PrismaClient,
+  private tokenService: TokenService,
+  private tokenPriceService: TokenPriceService
+) {}
+
+async executeSwap(...) {
+  // Resolve tokens dynamically
+  const fromToken = this.tokenService.resolveToken(
+    request.from.token,
+    request.from.chain
+  );
+  const toToken = this.tokenService.resolveToken(
+    request.to.token,
+    request.to.chain
+  );
+  
+  // Use resolved token data
+  const quote = await OneClickService.getQuote({
+    fromAsset: fromToken.assetId,
+    toAsset: toToken.assetId,
+    amount: request.from.amount,
+    userWallet: request.user.walletAddress
+  });
+  
+  // Build enhanced response
+  return {
+    intentId: intent.id,
+    depositAddress: quote.depositAddress,
+    from: {
+      symbol: fromToken.symbol,
+      assetId: fromToken.assetId,
+      blockchain: fromToken.blockchain,
+      decimals: fromToken.decimals,
+      contractAddress: fromToken.contractAddress, // May be undefined
+      amount: request.from.amount,
+      amountFormatted: this.tokenPriceService.formatAmount(...),
+      amountUsd: this.tokenPriceService.formatUsd(...)
+    },
+    to: {
+      // Similar structure
+    },
+    fees: { /* ... */ }
+  };
+}
+```
+
+### Test Mocking Pattern
+```typescript
+// Mock TokenService in tests
+const mockTokenService = {
+  resolveToken: vi.fn(),
+  getTokenPrice: vi.fn(),
+};
+
+// Mock token resolution
+mockTokenService.resolveToken.mockImplementation((token, chain) => {
+  if (token === 'wNEAR' && chain === 'near') {
+    return {
+      assetId: 'nep141:wrap.near',
+      symbol: 'wNEAR',
+      blockchain: 'near',
+      decimals: 24,
+      price: 2.36,
+      contractAddress: 'wrap.near'
+    };
+  }
+  // ... handle other tokens
+});
+```
+
+### Files That Need Updates
+- ✅ api/src/v2/services/TokenService.ts (DONE)
+- ✅ api/src/v2/services/TokenPriceService.ts (DONE)
+- ⏳ api/src/v2/services/SwapService.ts (NEXT)
+- ⏳ api/src/v2/controllers/TokenController.ts (NEW)
+- ⏳ api/src/v2/routes/token.routes.ts (NEW)
+- ⏳ api/src/v2/routes/index.ts (UPDATE)
+- ⏳ api/src/app.ts (UPDATE - initialize TokenService)
+- ⏳ api/src/v2/tests/*.test.ts (UPDATE - fix mocking)
+
+### Breaking Changes Summary
+Current test failures are expected and isolated to SwapService integration:
+- SwapService.test.ts: Needs TokenService mocking
+- SwapController.test.ts: Needs updated SwapService with TokenService
+- integration.test.ts: Needs TokenService initialization
+
+No changes needed to:
+- OneClickService ✅
+- WebhookService ✅
+- ApiKeyService ✅
+- RateLimitService ✅
+- Error handling ✅
+- IntentMonitor worker ✅
+
+## Current Test Status
+- Total Tests: 121 (116 passing, 5 failing)
+- New Tests Added: 45 (TokenService + TokenPriceService)
+- Failing Tests: 5 (all SwapService-related, expected)
+- Test Coverage: Excellent for completed components
+
+**Passing Test Suites:**
+- TokenService.test.ts: 30/30 ✅
+- TokenPriceService.test.ts: 15/15 ✅
+- ApiKeyService.test.ts: 9/9 ✅
+- RateLimitService.test.ts: 15/15 ✅
+- WebhookService.test.ts: 9/9 ✅
+- OneClickService.test.ts: 2/2 ✅
+- errorHandler.test.ts: 12/12 ✅
+- errors.test.ts: 20/20 ✅
+
+**Failing Test Suites (Expected):**
+- SwapService.test.ts: 2/4 (needs TokenService mocking)
+- SwapController.test.ts: 2/4 (depends on SwapService)
+- integration.test.ts: 0/1 (depends on SwapService)
