@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import swapRoutes from './swap.routes';
 import authRoutes from './auth.routes';
+import tokenRoutes from './token.routes';
 import { ipRateLimiter } from '../services/RateLimitService';
 import { errorHandler, notFoundHandler } from '../middleware';
 
@@ -12,6 +13,7 @@ router.use(ipRateLimiter);
 // Mount routes
 router.use('/swap', swapRoutes);
 router.use('/auth', authRoutes);
+router.use('/tokens', tokenRoutes);
 
 // Root endpoint
 router.get('/', (req, res) => {
@@ -24,6 +26,10 @@ router.get('/', (req, res) => {
       'POST /v2/auth/api-key': 'Create API key (public)',
       'GET /v2/auth/api-keys': 'List API keys (requires API key)',
       'DELETE /v2/auth/api-key/:id': 'Revoke API key (requires API key)',
+      'GET /v2/tokens': 'List all supported tokens (public)',
+      'GET /v2/tokens/chains': 'List supported blockchains (public)',
+      'GET /v2/tokens/search': 'Search tokens by symbol (public)',
+      'GET /v2/tokens/:assetId': 'Get token details (public)',
     },
   });
 });

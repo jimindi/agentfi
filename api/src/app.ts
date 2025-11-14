@@ -5,7 +5,7 @@ import helmet from 'helmet';
 import { logger } from './utils/logger';
 import { nearIntentsService } from './services/near-intents.service';
 import { nearContractService } from './services/near-contract.service';
-import { TokenService } from './v2/services/TokenService';
+import tokenService from './v2/services/TokenService';
 
 // Import v1 routes (old hybrid approach)
 import swapRoutes from './routes/swap.routes';
@@ -14,9 +14,6 @@ import authRoutes from './routes/auth.routes';
 
 // Import v2 routes (new OneClick approach)
 import v2Routes from './v2/routes/index';
-
-// Global TokenService instance
-let tokenService: TokenService;
 
 export async function createApp() {
   const app = express();
@@ -42,8 +39,7 @@ export async function createApp() {
     await nearContractService.init();
     logger.info('✅ NEAR Contract service initialized');
     
-    // Initialize TokenService
-    tokenService = new TokenService();
+    // Initialize TokenService (singleton)
     await tokenService.refreshTokenCache();
     logger.info('✅ TokenService initialized', {
       tokenCount: tokenService.getCacheInfo().tokenCount,
@@ -70,7 +66,7 @@ export async function createApp() {
 
   // Health check
   app.get('/health', (req, res) => {
-    const cacheInfo = tokenService?.getCacheInfo();
+    const cacheInfo = tokenService.getCacheInfo();
     res.json({
       status: 'healthy',
       timestamp: new Date().toISOString(),
@@ -78,11 +74,11 @@ export async function createApp() {
       services: {
         nearIntents: 'connected',
         nearContract: 'connected',
-        tokenService: cacheInfo ? {
+        tokenService: {
           tokenCount: cacheInfo.tokenCount,
           lastUpdated: cacheInfo.lastUpdated,
           isStale: cacheInfo.isStale
-        } : 'initializing'
+        },
       },
     });
   });
@@ -155,9 +151,6 @@ export async function createApp() {
   return app;
 }
 
-export function getTokenService(): TokenService {
-  if (!tokenService) {
-    throw new Error('TokenService not initialized. Call createApp() first.');
-  }
+export function getTokenService() {
   return tokenService;
 }

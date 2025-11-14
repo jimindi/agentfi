@@ -1,15 +1,14 @@
 import { Router } from 'express';
 import { SwapController } from '../controllers/SwapController';
-import { TokenService } from '../services/TokenService';
+import tokenService from '../services/TokenService';
 import TokenPriceService from '../services/TokenPriceService';
-import { authenticateApiKey } from '../middleware/auth.middleware';
+import { authenticate } from '../middleware/auth.middleware';
 import { swapRateLimiter } from '../services/RateLimitService';
 import { PrismaClient } from '@prisma/client';
 
 const prisma = new PrismaClient();
 
-// Initialize services
-const tokenService = new TokenService();
+// Initialize services with singleton TokenService
 const tokenPriceService = new TokenPriceService(tokenService);
 const swapController = new SwapController(prisma, tokenService, tokenPriceService);
 
@@ -25,7 +24,7 @@ const router = Router();
 // POST /v2/swap (requires authentication + rate limiting)
 router.post(
   '/',
-  authenticateApiKey,
+  authenticate,
   swapRateLimiter,
   (req, res, next) => swapController.executeSwap(req, res, next)
 );

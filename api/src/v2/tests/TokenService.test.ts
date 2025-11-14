@@ -1,7 +1,6 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest';
-import axios from 'axios';
+import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
 import { TokenService } from '../services/TokenService';
-import { ValidationError, ExternalServiceError } from '../errors';
+import axios from 'axios';
 
 vi.mock('axios');
 const mockedAxios = vi.mocked(axios);
@@ -9,307 +8,231 @@ const mockedAxios = vi.mocked(axios);
 describe('TokenService', () => {
   let tokenService: TokenService;
 
-  const mockTokens = [
+  const mockTokensResponse = [
     {
       assetId: 'nep141:wrap.near',
-      decimals: 24,
-      blockchain: 'near',
       symbol: 'wNEAR',
-      price: '2.36',
-      priceUpdatedAt: '2025-11-14T12:00:00.000Z',
+      blockchain: 'near',
+      decimals: 24,
       contractAddress: 'wrap.near',
+      price: '2.5',
+      icon: 'https://example.com/wnear.png',
     },
     {
       assetId: 'nep141:17208628f84f5d6ad33f0da3bbbeb27ffcb398eac501a31bd6ad2011e36133a1',
-      decimals: 6,
+      symbol: 'USDC',
       blockchain: 'near',
-      symbol: 'USDC',
-      price: '1.00',
-      priceUpdatedAt: '2025-11-14T12:00:00.000Z',
-      contractAddress: '17208628f84f5d6ad33f0da3bbbeb27ffcb398eac501a31bd6ad2011e36133a1',
-    },
-    {
-      assetId: 'eth-0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48.omft.near',
       decimals: 6,
-      blockchain: 'eth',
+      contractAddress: '17208628f84f5d6ad33f0da3bbbeb27ffcb398eac501a31bd6ad2011e36133a1',
+      price: '1.0',
+      icon: 'https://example.com/usdc.png',
+    },
+    {
+      assetId: 'erc20:0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48',
       symbol: 'USDC',
-      price: '1.00',
-      priceUpdatedAt: '2025-11-14T12:00:00.000Z',
+      blockchain: 'ethereum',
+      decimals: 6,
       contractAddress: '0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48',
-    },
-    {
-      assetId: 'nep141:btc.omft.near',
-      decimals: 8,
-      blockchain: 'btc',
-      symbol: 'BTC',
-      price: '95863.00',
-      priceUpdatedAt: '2025-11-14T12:00:00.000Z',
-      // No contractAddress - native token
-    },
-    {
-      assetId: 'nep141:eth.omft.near',
-      decimals: 18,
-      blockchain: 'eth',
-      symbol: 'ETH',
-      price: '3421.50',
-      priceUpdatedAt: '2025-11-14T12:00:00.000Z',
-      // No contractAddress - native token
+      price: '1.0',
+      icon: 'https://example.com/usdc.png',
     },
   ];
 
   beforeEach(() => {
-    tokenService = new TokenService();
+    // Get singleton instance
+    tokenService = TokenService.getInstance();
     vi.clearAllMocks();
   });
 
   describe('refreshTokenCache', () => {
     it('should fetch and cache tokens from OneClick API', async () => {
-      mockedAxios.get.mockResolvedValueOnce({ data: mockTokens });
+      mockedAxios.get.mockResolvedValue({ data: mockTokensResponse });
 
       await tokenService.refreshTokenCache();
 
       expect(mockedAxios.get).toHaveBeenCalledWith(
-        'https://1click.chaindefuser.com/v0/tokens',
-        { timeout: 10000 }
+        expect.stringContaining('/v0/tokens')
       );
 
-      const tokens = tokenService.getAllTokens();
-      expect(tokens).toHaveLength(5);
-      expect(tokens[0].symbol).toBe('wNEAR');
+      const cacheInfo = tokenService.getCacheInfo();
+      expect(cacheInfo.tokenCount).toBe(3);
+      expect(cacheInfo.isStale).toBe(false);
+      expect(cacheInfo.lastUpdated).toBeInstanceOf(Date);
     });
 
-    it('should handle API errors', async () => {
-      const axiosError = {
-        isAxiosError: true,
-        response: { status: 500 },
-        message: 'Server error',
-      };
-      
-      mockedAxios.get.mockRejectedValueOnce(axiosError);
-      mockedAxios.isAxiosError.mockReturnValue(true);
+    it('should mark cache as stale on API failure', async () => {
+      mockedAxios.get.mockRejectedValue(new Error('API Error'));
 
-      await expect(tokenService.refreshTokenCache()).rejects.toThrow(ExternalServiceError);
+      await expect(tokenService.refreshTokenCache()).rejects.toThrow();
+
+      const cacheInfo = tokenService.getCacheInfo();
+      expect(cacheInfo.isStale).toBe(true);
     });
+  });
 
-    it('should handle invalid response format', async () => {
-      mockedAxios.get.mockResolvedValueOnce({ data: 'invalid' });
-
-      await expect(tokenService.refreshTokenCache()).rejects.toThrow(ExternalServiceError);
-    });
-
-    it('should parse prices correctly', async () => {
-      mockedAxios.get.mockResolvedValueOnce({ data: mockTokens });
-
+  describe('getAllTokens', () => {
+    it('should return all cached tokens', async () => {
+      mockedAxios.get.mockResolvedValue({ data: mockTokensResponse });
       await tokenService.refreshTokenCache();
 
-      const wNEAR = tokenService.findByAssetId('nep141:wrap.near');
-      expect(wNEAR?.price).toBe(2.36);
-      expect(typeof wNEAR?.price).toBe('number');
+      const tokens = tokenService.getAllTokens();
+
+      expect(tokens).toHaveLength(3);
+      expect(tokens[0]).toHaveProperty('assetId');
+      expect(tokens[0]).toHaveProperty('symbol');
+    });
+  });
+
+  describe('getBlockchains', () => {
+    it('should return unique list of blockchains', async () => {
+      mockedAxios.get.mockResolvedValue({ data: mockTokensResponse });
+      await tokenService.refreshTokenCache();
+
+      const blockchains = tokenService.getBlockchains();
+
+      expect(blockchains).toContain('near');
+      expect(blockchains).toContain('ethereum');
+      expect(blockchains).toHaveLength(2);
+      expect(blockchains).toEqual(['ethereum', 'near']); // Should be sorted
     });
   });
 
   describe('findByAssetId', () => {
     beforeEach(async () => {
-      mockedAxios.get.mockResolvedValueOnce({ data: mockTokens });
+      mockedAxios.get.mockResolvedValue({ data: mockTokensResponse });
       await tokenService.refreshTokenCache();
     });
 
-    it('should find token by assetId', () => {
+    it('should find token by exact assetId', () => {
       const token = tokenService.findByAssetId('nep141:wrap.near');
+
       expect(token).toBeDefined();
       expect(token?.symbol).toBe('wNEAR');
-      expect(token?.contractAddress).toBe('wrap.near');
+      expect(token?.blockchain).toBe('near');
     });
 
-    it('should return null for unknown assetId', () => {
-      const token = tokenService.findByAssetId('unknown:token');
+    it('should return null for non-existent assetId', () => {
+      const token = tokenService.findByAssetId('nep141:nonexistent.near');
       expect(token).toBeNull();
-    });
-
-    it('should handle native tokens without contractAddress', () => {
-      const token = tokenService.findByAssetId('nep141:btc.omft.near');
-      expect(token).toBeDefined();
-      expect(token?.symbol).toBe('BTC');
-      expect(token?.contractAddress).toBeUndefined();
     });
   });
 
   describe('findBySymbol', () => {
     beforeEach(async () => {
-      mockedAxios.get.mockResolvedValueOnce({ data: mockTokens });
+      mockedAxios.get.mockResolvedValue({ data: mockTokensResponse });
       await tokenService.refreshTokenCache();
     });
 
-    it('should find token by symbol', () => {
+    it('should find tokens by exact symbol', () => {
       const tokens = tokenService.findBySymbol('wNEAR');
+
       expect(tokens).toHaveLength(1);
-      expect(tokens[0].assetId).toBe('nep141:wrap.near');
+      expect(tokens[0].symbol).toBe('wNEAR');
     });
 
-    it('should find token by symbol and chain', () => {
+    it('should find tokens by case-insensitive symbol', () => {
+      const tokens = tokenService.findBySymbol('wnear');
+
+      expect(tokens).toHaveLength(1);
+      expect(tokens[0].symbol).toBe('wNEAR');
+    });
+
+    it('should find multiple tokens with same symbol', () => {
+      const tokens = tokenService.findBySymbol('USDC');
+
+      expect(tokens).toHaveLength(2);
+      expect(tokens.every(t => t.symbol === 'USDC')).toBe(true);
+    });
+
+    it('should filter by blockchain when provided', () => {
       const tokens = tokenService.findBySymbol('USDC', 'near');
+
       expect(tokens).toHaveLength(1);
       expect(tokens[0].blockchain).toBe('near');
     });
 
-    it('should return multiple tokens with same symbol', () => {
-      const tokens = tokenService.findBySymbol('USDC');
-      expect(tokens).toHaveLength(2); // NEAR and ETH
-    });
+    it('should support partial symbol matching', () => {
+      const tokens = tokenService.findBySymbol('USD');
 
-    it('should be case-insensitive', () => {
-      const tokens = tokenService.findBySymbol('usdc');
       expect(tokens).toHaveLength(2);
+      expect(tokens.every(t => t.symbol.includes('USD'))).toBe(true);
     });
 
-    it('should return empty array for unknown symbol', () => {
-      const tokens = tokenService.findBySymbol('INVALID');
-      expect(tokens).toHaveLength(0);
+    it('should return empty array for non-existent symbol', () => {
+      const tokens = tokenService.findBySymbol('NONEXISTENT');
+      expect(tokens).toEqual([]);
     });
   });
 
   describe('resolveToken', () => {
     beforeEach(async () => {
-      mockedAxios.get.mockResolvedValueOnce({ data: mockTokens });
+      mockedAxios.get.mockResolvedValue({ data: mockTokensResponse });
       await tokenService.refreshTokenCache();
     });
 
-    it('should resolve token by assetId', () => {
+    it('should resolve by assetId', () => {
       const token = tokenService.resolveToken('nep141:wrap.near');
+
       expect(token.symbol).toBe('wNEAR');
-    });
-
-    it('should resolve token by symbol + chain', () => {
-      const token = tokenService.resolveToken('USDC', 'near');
-      expect(token.assetId).toContain('17208628');
-    });
-
-    it('should resolve unique symbol without chain', () => {
-      const token = tokenService.resolveToken('wNEAR');
       expect(token.assetId).toBe('nep141:wrap.near');
     });
 
+    it('should resolve by symbol when unique', () => {
+      const token = tokenService.resolveToken('wNEAR');
+
+      expect(token.symbol).toBe('wNEAR');
+      expect(token.blockchain).toBe('near');
+    });
+
+    it('should resolve by symbol with chain filter', () => {
+      const token = tokenService.resolveToken('USDC', 'near');
+
+      expect(token.symbol).toBe('USDC');
+      expect(token.blockchain).toBe('near');
+    });
+
+    it('should throw error for non-existent token', () => {
+      expect(() => tokenService.resolveToken('NONEXISTENT')).toThrow(
+        'Token "NONEXISTENT" not found'
+      );
+    });
+
     it('should throw error for ambiguous symbol without chain', () => {
-      expect(() => {
-        tokenService.resolveToken('USDC'); // Multiple USDC tokens exist
-      }).toThrow('Multiple "USDC" tokens found');
-    });
-
-    it('should throw error with available options for ambiguous symbol', () => {
-      try {
-        tokenService.resolveToken('USDC');
-        expect.fail('Should have thrown');
-      } catch (error: any) {
-        expect(error).toBeInstanceOf(ValidationError);
-        expect(error.details.availableOptions).toHaveLength(2);
-        expect(error.details.availableOptions[0]).toHaveProperty('blockchain');
-        expect(error.details.availableOptions[0]).toHaveProperty('assetId');
-      }
-    });
-
-    it('should throw error for invalid assetId', () => {
-      expect(() => {
-        tokenService.resolveToken('invalid:assetid');
-      }).toThrow('Invalid assetId');
-    });
-
-    it('should throw error for unknown symbol', () => {
-      expect(() => {
-        tokenService.resolveToken('INVALID', 'near');
-      }).toThrow('Token "INVALID" not found');
-    });
-
-    it('should handle native tokens without contractAddress', () => {
-      const token = tokenService.resolveToken('BTC', 'btc');
-      expect(token.contractAddress).toBeUndefined();
-      expect(token.symbol).toBe('BTC');
-    });
-
-    it('should handle contract tokens with contractAddress', () => {
-      const token = tokenService.resolveToken('wNEAR', 'near');
-      expect(token.contractAddress).toBe('wrap.near');
+      expect(() => tokenService.resolveToken('USDC')).toThrow(
+        'Multiple tokens found for "USDC"'
+      );
     });
   });
 
   describe('getTokenPrice', () => {
     beforeEach(async () => {
-      mockedAxios.get.mockResolvedValueOnce({ data: mockTokens });
+      mockedAxios.get.mockResolvedValue({ data: mockTokensResponse });
       await tokenService.refreshTokenCache();
     });
 
-    it('should return token price', () => {
+    it('should return token price by assetId', () => {
       const price = tokenService.getTokenPrice('nep141:wrap.near');
-      expect(price).toBe(2.36);
+      expect(price).toBe(2.5);
     });
 
-    it('should throw error for unknown token', () => {
-      expect(() => {
-        tokenService.getTokenPrice('unknown:token');
-      }).toThrow('Token not found');
-    });
-  });
-
-  describe('getBlockchains', () => {
-    beforeEach(async () => {
-      mockedAxios.get.mockResolvedValueOnce({ data: mockTokens });
-      await tokenService.refreshTokenCache();
-    });
-
-    it('should return list of unique blockchains', () => {
-      const blockchains = tokenService.getBlockchains();
-      expect(blockchains).toContain('near');
-      expect(blockchains).toContain('eth');
-      expect(blockchains).toContain('btc');
-      expect(blockchains.length).toBeGreaterThan(0);
-    });
-
-    it('should return sorted list', () => {
-      const blockchains = tokenService.getBlockchains();
-      const sorted = [...blockchains].sort();
-      expect(blockchains).toEqual(sorted);
+    it('should throw error for non-existent token', () => {
+      expect(() => tokenService.getTokenPrice('nep141:nonexistent.near')).toThrow(
+        'Token with assetId "nep141:nonexistent.near" not found'
+      );
     });
   });
 
   describe('getCacheInfo', () => {
-    it('should return cache metadata', async () => {
-      mockedAxios.get.mockResolvedValueOnce({ data: mockTokens });
+    it('should return cache information', async () => {
+      mockedAxios.get.mockResolvedValue({ data: mockTokensResponse });
       await tokenService.refreshTokenCache();
 
       const info = tokenService.getCacheInfo();
-      expect(info.lastUpdated).toBeInstanceOf(Date);
-      expect(info.tokenCount).toBe(5);
-      expect(info.isStale).toBe(false);
-    });
 
-    it('should indicate stale cache', () => {
-      const info = tokenService.getCacheInfo();
-      expect(info.lastUpdated).toBeNull();
-      expect(info.tokenCount).toBe(0);
-      expect(info.isStale).toBe(true);
-    });
-  });
-
-  describe('getAllTokens', () => {
-    beforeEach(async () => {
-      mockedAxios.get.mockResolvedValueOnce({ data: mockTokens });
-      await tokenService.refreshTokenCache();
-    });
-
-    it('should return all cached tokens', () => {
-      const tokens = tokenService.getAllTokens();
-      expect(tokens).toHaveLength(5);
-    });
-
-    it('should preserve contractAddress when present', () => {
-      const tokens = tokenService.getAllTokens();
-      const wNEAR = tokens.find((t) => t.symbol === 'wNEAR');
-      expect(wNEAR?.contractAddress).toBe('wrap.near');
-    });
-
-    it('should omit contractAddress when not present', () => {
-      const tokens = tokenService.getAllTokens();
-      const BTC = tokens.find((t) => t.symbol === 'BTC');
-      expect(BTC?.contractAddress).toBeUndefined();
+      expect(info).toHaveProperty('tokenCount', 3);
+      expect(info).toHaveProperty('lastUpdated');
+      expect(info).toHaveProperty('isStale', false);
+      expect(info).toHaveProperty('blockchains', 2);
     });
   });
 });

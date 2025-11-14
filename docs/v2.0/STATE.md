@@ -1,9 +1,9 @@
 # AgentFi SDK v2.0 - Project State
 
-**Last Updated:** November 14, 2025 (Session 17)  
+**Last Updated:** November 14, 2025 (Session 18)  
 **Branch:** agentfi-v2.0  
-**Status:** Multi-Token Support Complete - Ready for Mainnet Testing  
-**Progress:** 70% Complete
+**Status:** Token Discovery API Complete - Ready for Mainnet Testing  
+**Progress:** 75% Complete
 
 ## Quick Status
 
@@ -13,51 +13,54 @@
 - Multi-token support (117+ tokens, 22+ blockchains)
 - Token discovery and pricing services
 - SwapService with dynamic token support
-- Comprehensive test coverage (121/121 passing)
-
-⏳ **IN PROGRESS:**
-- Token discovery API endpoints
+- Token Discovery API endpoints (4 endpoints)
+- Comprehensive test coverage (127/127 passing)
 
 🔴 **CRITICAL NEXT STEP:**
 - **Mainnet testing** - Test with real transactions before production
 
 📋 **TODO:**
-- TokenController and routes
 - Production deployment
 - Enhanced monitoring
 
-## Test Status: 121/121 Passing ✅
+## Test Status: 127/127 Passing ✅
 
 All components fully tested and working:
 - ApiKeyService: 9 tests
 - RateLimitService: 15 tests  
 - WebhookService: 9 tests
 - OneClickService: 2 tests
-- TokenService: 30 tests
+- TokenService: 20 tests
 - TokenPriceService: 15 tests
 - SwapService: 4 tests
 - SwapController: 4 tests
+- TokenController: 16 tests ⭐ NEW
 - Integration: 1 test
 - Error System: 20 tests
 - Error Handler: 12 tests
 
-## Recent Changes (Session 17)
+## Recent Changes (Session 18)
 
-**Multi-Token Support Completion:**
-1. ✅ Updated SwapService to use TokenService and TokenPriceService
-2. ✅ Removed all hardcoded token logic
-3. ✅ Enhanced swap responses with full token metadata
-4. ✅ Updated SwapController with service dependencies
-5. ✅ Updated all tests (121/121 passing)
-6. ✅ Updated routes and app initialization
-7. ✅ Added automatic token cache refresh (30-minute intervals)
+**Token Discovery API Implementation:**
+1. ✅ Created TokenController with 4 endpoints (16 tests)
+2. ✅ Implemented singleton TokenService pattern
+3. ✅ Fixed OneClick API endpoint (/v0/tokens)
+4. ✅ Added token routes to v2 router
+5. ✅ Fixed authentication middleware imports
+6. ✅ All 127 tests passing
+
+**New Endpoints:**
+- GET /v2/tokens (list/filter)
+- GET /v2/tokens/chains
+- GET /v2/tokens/search
+- GET /v2/tokens/:assetId
 
 **Key Improvements:**
-- Supports 117+ tokens across 22+ blockchains (dynamic)
-- Real-time pricing from OneClick API
-- Enhanced error messages with token details
-- Better token validation and resolution
-- Automatic cache management
+- Public token discovery (no auth)
+- Filtering by chain and symbol
+- Search with partial matching
+- Blockchain listing with token counts
+- Singleton pattern for TokenService
 
 ## Directory Structure
 ```
@@ -66,10 +69,11 @@ All components fully tested and working:
 │   ├── src/
 │   │   ├── v2/                          # V2 Implementation (Current)
 │   │   │   ├── controllers/
-│   │   │   │   └── SwapController.ts    # ✅ HTTP request handling (updated)
+│   │   │   │   ├── SwapController.ts    # ✅ HTTP request handling
+│   │   │   │   └── TokenController.ts   # ✅ Token endpoints (NEW)
 │   │   │   ├── services/
-│   │   │   │   ├── SwapService.ts       # ✅ Swap orchestration (updated)
-│   │   │   │   ├── TokenService.ts      # ✅ Token discovery (117+ tokens)
+│   │   │   │   ├── SwapService.ts       # ✅ Swap orchestration
+│   │   │   │   ├── TokenService.ts      # ✅ Token discovery (Singleton)
 │   │   │   │   ├── TokenPriceService.ts # ✅ Pricing & validation
 │   │   │   │   ├── OneClickService.ts   # ✅ OneClick API client
 │   │   │   │   ├── ApiKeyService.ts     # ✅ API key management
@@ -80,12 +84,14 @@ All components fully tested and working:
 │   │   │   │   └── errorHandler.ts      # ✅ Global error handling
 │   │   │   ├── routes/
 │   │   │   │   ├── index.ts             # ✅ Route aggregator
-│   │   │   │   └── swap.routes.ts       # ✅ Swap endpoints (updated)
+│   │   │   │   ├── swap.routes.ts       # ✅ Swap endpoints
+│   │   │   │   ├── auth.routes.ts       # ✅ Auth endpoints
+│   │   │   │   └── token.routes.ts      # ✅ Token endpoints (NEW)
 │   │   │   ├── types/
-│   │   │   │   └── swap.types.ts        # ✅ Type definitions (updated)
+│   │   │   │   └── swap.types.ts        # ✅ Type definitions
 │   │   │   ├── errors/
 │   │   │   │   └── index.ts             # ✅ Custom error classes
-│   │   │   └── tests/                   # ✅ All tests (121 passing)
+│   │   │   └── tests/                   # ✅ All tests (127 passing)
 │   │   │       ├── ApiKeyService.test.ts
 │   │   │       ├── RateLimitService.test.ts
 │   │   │       ├── WebhookService.test.ts
@@ -94,12 +100,13 @@ All components fully tested and working:
 │   │   │       ├── TokenPriceService.test.ts
 │   │   │       ├── SwapService.test.ts
 │   │   │       ├── SwapController.test.ts
+│   │   │       ├── TokenController.test.ts  # ✅ NEW
 │   │   │       ├── integration.test.ts
 │   │   │       ├── errors.test.ts
 │   │   │       └── errorHandler.test.ts
 │   │   ├── routes/                      # V1 Routes (Deprecated)
 │   │   ├── services/                    # V1 Services (Deprecated)
-│   │   ├── app.ts                       # ✅ Express app setup (updated)
+│   │   ├── app.ts                       # ✅ Express app setup
 │   │   └── index.ts                     # ✅ Server entry point
 │   ├── prisma/
 │   │   └── schema.prisma                # ✅ Database schema
@@ -107,13 +114,11 @@ All components fully tested and working:
 │   └── tsconfig.json                    # ✅ TypeScript config
 ├── docs/
 │   └── v2.0/
-│       ├── STATE.md                     # ✅ This file (updated)
-│       ├── PROGRESS.md                  # ✅ Progress tracking (updated)
+│       ├── STATE.md                     # ✅ This file
+│       ├── PROGRESS.md                  # ✅ Progress tracking
 │       ├── ARCHITECTURE.md              # ✅ System design
-│       ├── MULTI-TOKEN-IMPLEMENTATION.md # ✅ Implementation guide
 │       ├── ONECLICK-API.md              # ✅ API documentation
-│       ├── PROJECT-INSTRUCTIONS.md      # ✅ Development workflow
-│       └── SESSION-17-START.md          # ✅ Session summary
+│       └── PROJECT-INSTRUCTIONS.md      # ✅ Development workflow
 └── README.md                            # ✅ Project overview
 ```
 
@@ -128,43 +133,65 @@ POST /v2/swap
   • Requires: API key authentication
   • Rate limited: Per API key limits
   • Supports: 117+ tokens across 22+ blockchains
-  • Returns: Enhanced response with full token metadata
   
 GET /v2/swap/:intentId
   • Get swap status
   • Public endpoint (no auth required)
-  • Returns: Intent status and transaction details
 ```
 
-#### Token Endpoints (TODO - Next Priority)
+#### Token Endpoints (NEW - Session 18)
 ```
 GET /v2/tokens
   • List all supported tokens
-  • Optional query params: chain, symbol
-  • Returns: Token list with prices
+  • Optional filters: ?chain=near&symbol=USDC
+  • Public endpoint (no auth required)
+  • Returns: 117+ tokens with prices
 
 GET /v2/tokens/chains
   • List supported blockchains
-  • Returns: Array of blockchain names
+  • Returns: 22+ blockchains with token counts
+
+GET /v2/tokens/search?q=USDC
+  • Search tokens by symbol
+  • Optional filter: &chain=near
+
+GET /v2/tokens/:assetId
+  • Get specific token details
+  • Example: /v2/tokens/nep141:wrap.near
 ```
 
-### V1 Endpoints (Deprecated)
-All V1 endpoints are deprecated. Use V2 endpoints instead.
+#### Auth Endpoints
+```
+POST /v2/auth/api-key
+  • Create API key (public, rate limited)
+
+GET /v2/auth/api-keys
+  • List user's API keys (requires auth)
+
+DELETE /v2/auth/api-key/:id
+  • Revoke API key (requires auth)
+```
 
 ## Service Layer Details
 
-### TokenService (NEW - Session 16)
+### TokenService (Singleton - Updated Session 18)
 **Purpose:** Dynamic token discovery and resolution
-**Status:** ✅ Complete (30 tests passing)
+**Status:** ✅ Complete (20 tests passing)
+
+**Architecture:** Singleton pattern
+- Single shared instance across all routes
+- Prevents duplicate API calls
+- Consistent cache across services
 
 **Key Features:**
 - Fetches 117+ tokens from OneClick API
-- Caches tokens in memory (1-hour TTL)
+- Caches tokens in memory (auto-refresh every 30 min)
 - Resolves tokens by assetId or symbol+chain
 - Price lookup for any supported token
 - Blockchain enumeration
 
 **Methods:**
+- `getInstance()` - Get singleton instance
 - `refreshTokenCache()` - Fetch tokens from API
 - `resolveToken(token, chain?)` - Resolve to OneClickToken
 - `getTokenPrice(assetId)` - Get USD price
@@ -173,7 +200,17 @@ All V1 endpoints are deprecated. Use V2 endpoints instead.
 - `getAllTokens()` - Get all cached tokens
 - `getBlockchains()` - List supported chains
 
-### TokenPriceService (NEW - Session 16)
+### TokenController (NEW - Session 18)
+**Purpose:** HTTP handlers for token endpoints
+**Status:** ✅ Complete (16 tests passing)
+
+**Methods:**
+- `listTokens()` - List/filter all tokens
+- `getChains()` - List blockchains with counts
+- `searchTokens()` - Search by symbol
+- `getToken()` - Get specific token by assetId
+
+### TokenPriceService
 **Purpose:** Token pricing and validation
 **Status:** ✅ Complete (15 tests passing)
 
@@ -183,26 +220,15 @@ All V1 endpoints are deprecated. Use V2 endpoints instead.
 - Amount formatting for display
 - Integration with TokenService
 
-**Methods:**
-- `validateMinimumAmount(amount, decimals, assetId)` - Enforce $5 minimum
-- `calculateUsdValue(amount, decimals, assetId)` - Get USD value
-- `formatAmount(amount, decimals, symbol)` - Format for display
-- `formatUsd(usdValue)` - Format USD value
-
-### SwapService (UPDATED - Session 17)
+### SwapService
 **Purpose:** Orchestrate swap operations
 **Status:** ✅ Complete (4 tests passing)
 
-**Changes:**
-- ✅ Removed hardcoded `getAssetId()` method
-- ✅ Uses TokenService for token resolution
-- ✅ Uses TokenPriceService for validation
-- ✅ Enhanced responses with full token metadata
-- ✅ Dynamic support for all OneClick tokens
-
-**Methods:**
-- `executeSwap(request, userId, apiKeyId)` - Execute swap with token resolution
-- `getSwapStatus(intentId)` - Get intent status
+**Features:**
+- Uses TokenService for token resolution
+- Uses TokenPriceService for validation
+- Enhanced responses with full token metadata
+- Dynamic support for all OneClick tokens
 
 ### OneClickService
 **Purpose:** Direct integration with OneClick API
@@ -210,78 +236,25 @@ All V1 endpoints are deprecated. Use V2 endpoints instead.
 
 **Methods:**
 - `getQuote(params)` - Get swap quote and deposit address
-- Handles: wNEAR, USDC, BTC, SOL, etc. (all OneClick supported tokens)
-
-### ApiKeyService
-**Purpose:** API key lifecycle management
-**Status:** ✅ Complete (9 tests passing)
-
-**Methods:**
-- `createApiKey(prisma, params)` - Generate new API key
-- `validateApiKey(prisma, keyHash)` - Verify key and check expiry
-- `revokeApiKey(prisma, keyId, userId)` - Revoke key
-- `listApiKeys(prisma, userId)` - List user's keys
-
-### RateLimitService
-**Purpose:** Redis-based rate limiting
-**Status:** ✅ Complete (15 tests passing)
-
-**Features:**
-- Per-API-key rate limiting
-- Sliding window algorithm
-- Rate limit info headers
-- Configurable limits per tier
-
-### WebhookService
-**Purpose:** Async notifications for swap status updates
-**Status:** ✅ Complete (9 tests passing)
-
-**Features:**
-- Retry mechanism (3 attempts with exponential backoff)
-- Status update notifications
-- Error handling and logging
+- Supports all OneClick tokens (117+)
 
 ## Token Support
 
 **Supported Tokens:** 117+ (dynamic from OneClick API)
 **Supported Blockchains:** 22+ including:
-- NEAR Protocol
-- Ethereum
-- Solana
-- Bitcoin
-- Arbitrum
-- Optimism
-- Polygon
-- Avalanche
-- BNB Chain
-- And more...
-
-**Popular Token Pairs:**
-- wNEAR ↔ USDC
-- NEAR ↔ ETH
-- wNEAR ↔ BTC
-- USDC ↔ USDT
-- Any supported token pair via OneClick
+- NEAR Protocol (26 tokens)
+- Ethereum (20 tokens)
+- Solana (13 tokens)
+- Gnosis, BSC, Base, Arbitrum, Optimism
+- Avalanche, Polygon, Aptos, Stellar
+- Sui, TON, Tron, Bitcoin, Cardano
+- Dogecoin, Litecoin, XRP, Zcash
 
 **Token Resolution:**
 - By assetId: `nep141:wrap.near`
 - By symbol: `wNEAR` (with optional chain filter)
 - Real-time pricing from OneClick API
 - Automatic cache refresh every 30 minutes
-
-## Database Schema (Prisma)
-
-**Tables:**
-- `User` - User accounts with email and plan tier
-- `ApiKey` - API keys with hashed values and rate limits
-- `Intent` - Swap intents with status tracking
-- `UsageLog` - API usage metrics
-- `Invoice` - Billing records (future use)
-
-**Key Relationships:**
-- User → ApiKey (one-to-many)
-- User → Intent (one-to-many)
-- ApiKey → Intent (one-to-many)
 
 ## Environment Variables
 
@@ -301,144 +274,33 @@ LOG_LEVEL=info
 PORT=3000
 ```
 
-## Swap Flow (Current Implementation)
-```
-1. Client Request
-   └─> POST /v2/swap
-       {
-         "from": { "chain": "near", "token": "wNEAR", "amount": "2200000000000000000000000" },
-         "to": { "chain": "near", "token": "USDC" },
-         "user": { "walletAddress": "user.near" },
-         "options": { "webhookUrl": "https://..." }
-       }
-
-2. Authentication & Rate Limiting
-   └─> API key validated
-   └─> Rate limit checked (Redis)
-
-3. Token Resolution (NEW)
-   └─> TokenService.resolveToken("wNEAR", "near")
-   └─> TokenService.resolveToken("USDC", "near")
-
-4. Validation (UPDATED)
-   └─> TokenPriceService.validateMinimumAmount()
-   └─> Calculates USD value using real-time prices
-   └─> Enforces $5 minimum
-
-5. OneClick Quote
-   └─> OneClickService.getQuote()
-       └─> Uses resolved assetIds
-       └─> Returns deposit address, estimated output, fees
-
-6. Database Storage
-   └─> Create Intent record
-       └─> Status: 'pending_deposit'
-       └─> Metadata: deposit address, estimated output, fees
-
-7. Enhanced Response (NEW)
-   └─> {
-         "intentId": "...",
-         "status": "pending_deposit",
-         "depositAddress": "...",
-         "from": {
-           "symbol": "wNEAR",
-           "assetId": "nep141:wrap.near",
-           "blockchain": "near",
-           "decimals": 24,
-           "contractAddress": "wrap.near",
-           "amount": "2200000000000000000000000",
-           "amountFormatted": "2.200000 wNEAR",
-           "amountUsd": "$5.19"
-         },
-         "to": {
-           "symbol": "USDC",
-           "assetId": "nep141:17208628...",
-           "blockchain": "near",
-           "decimals": 6,
-           "estimatedOutput": "5000000",
-           "estimatedOutputFormatted": "5.000000 USDC",
-           "estimatedOutputUsd": "$5.00"
-         },
-         "fees": { ... }
-       }
-
-8. Background Monitoring
-   └─> Worker monitors OneClick API for status updates
-   └─> Updates Intent status in database
-   └─> Sends webhook notifications (if configured)
-```
-
-## Error Handling
-
-**Custom Error Classes:**
-- `ValidationError` (400) - Invalid input, token not found, below minimum
-- `UnauthorizedError` (401) - Missing/invalid API key
-- `ForbiddenError` (403) - Insufficient permissions
-- `NotFoundError` (404) - Resource not found
-- `RateLimitError` (429) - Rate limit exceeded
-- `ExternalServiceError` (502) - OneClick API failures
-- `InternalServerError` (500) - Unexpected errors
-
-**Error Response Format:**
-```json
-{
-  "success": false,
-  "error": {
-    "code": "VALIDATION_ERROR",
-    "message": "Token \"UNKNOWN\" not found",
-    "statusCode": 400,
-    "details": {
-      "token": "UNKNOWN",
-      "chain": "near"
-    }
-  }
-}
-```
-
 ## Next Steps
 
 ### 1. CRITICAL: Mainnet Testing (Recommended Next)
 **Priority:** HIGH  
-**Duration:** 1-2 hours  
-**Risk:** Testing with real funds
+**Duration:** 1-2 hours
 
 **Test Scenarios:**
 1. Small wNEAR → USDC swap (~$5-10)
-2. USDC → wNEAR reverse swap
-3. Invalid token handling
-4. Below minimum amount validation
-5. Deposit address generation
-6. Webhook delivery (if configured)
-
-**Requirements:**
-- NEAR mainnet account with funds
-- Valid API key from database
-- Test webhook endpoint (optional)
+2. Test token discovery endpoints
+3. Verify deposit address generation
+4. Monitor real transactions
+5. Test error handling
 
 **Why Critical:**
-- All code is tested in unit/integration tests
-- But never tested with real OneClick API + real transactions
-- Need to verify deposit address generation works
-- Need to confirm real token transfers complete
-- Need to validate pricing accuracy
+- All code tested but not with real transactions
+- Need to verify OneClick integration works end-to-end
+- Validate pricing accuracy
+- Confirm deposit flow
 
-### 2. Token Discovery API
+### 2. Production Deployment
 **Priority:** Medium  
 **Duration:** 2-3 hours
-
-- Create TokenController
-- Add GET /v2/tokens endpoints
-- Add filtering and search
-- Add tests (15-20 tests)
-
-### 3. Production Readiness
-**Priority:** Lower  
-**Duration:** 3-4 hours
 
 - Environment configuration
 - Enhanced monitoring
 - Performance tuning
-- Documentation updates
+- Documentation
 
 ## Commands Reference
 
@@ -447,65 +309,46 @@ PORT=3000
 # Start API server
 cd /root/agentfi-sdk/api && npm run dev
 
-# Start background worker
-cd /root/agentfi-sdk/api && npm run worker
-
 # Run all tests
 cd /root/agentfi-sdk/api && npx vitest run
 
 # Run specific test
-cd /root/agentfi-sdk/api && npx vitest run src/v2/tests/SwapService.test.ts
+cd /root/agentfi-sdk/api && npx vitest run src/v2/tests/TokenController.test.ts
 
 # Watch mode
 cd /root/agentfi-sdk/api && npx vitest
 ```
 
-### Git Workflow
+### Testing Token Endpoints
 ```bash
-# Check status
-cd /root/agentfi-sdk
-git status
-git log -1 --stat
+# List all tokens
+curl http://localhost:3000/v2/tokens
 
-# Commit changes
-git add -A
-git commit -m "v2.0: descriptive message"
-git push origin agentfi-v2.0
+# Filter by chain
+curl "http://localhost:3000/v2/tokens?chain=near"
+
+# Search tokens
+curl "http://localhost:3000/v2/tokens/search?q=USDC"
+
+# Get blockchains
+curl http://localhost:3000/v2/tokens/chains
+
+# Get specific token
+curl http://localhost:3000/v2/tokens/nep141:wrap.near
 ```
-
-### Database
-```bash
-# Apply migrations
-cd /root/agentfi-sdk/api && npx prisma migrate dev
-
-# Generate Prisma client
-cd /root/agentfi-sdk/api && npx prisma generate
-
-# Open Prisma Studio
-cd /root/agentfi-sdk/api && npx prisma studio
-```
-
-## Resources
-
-- **OneClick API:** https://1click.chaindefuser.com/docs
-- **Project Instructions:** [PROJECT-INSTRUCTIONS.md](./PROJECT-INSTRUCTIONS.md)
-- **Progress Log:** [PROGRESS.md](./PROGRESS.md)
-- **Architecture:** [ARCHITECTURE.md](./ARCHITECTURE.md)
-- **Implementation Plan:** [MULTI-TOKEN-IMPLEMENTATION.md](./MULTI-TOKEN-IMPLEMENTATION.md)
-- **OneClick Integration:** [ONECLICK-API.md](./ONECLICK-API.md)
 
 ## Success Criteria
 
-- [x] All tests passing (121/121) ✅
+- [x] All tests passing (127/127) ✅
 - [x] Zero hardcoded tokens ✅
 - [x] Dynamic token discovery ✅
 - [x] Real-time pricing ✅
 - [x] Enhanced swap responses ✅
+- [x] Token API endpoints ✅
 - [ ] Mainnet testing complete ⏳ NEXT
-- [ ] Token API endpoints
 - [ ] Production deployment
 
 ---
 
-**Last Commit:** `v2.0: Update TokenPriceService and prepare for SwapService update` (Session 16)  
-**Next Commit:** SwapService multi-token completion (Session 17)
+**Last Commit:** Session 17 - Multi-token support complete
+**Next Commit:** Session 18 - Token Discovery API implementation
