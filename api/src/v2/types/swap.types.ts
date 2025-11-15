@@ -1,13 +1,12 @@
-// User input format (hybrid - supports both symbol+chain and assetId)
 export interface SwapRequest {
   from: {
-    chain?: string;      // Optional if using assetId
-    token: string;       // Symbol (e.g., "USDC") OR assetId (e.g., "nep141:wrap.near")
+    chain: string;
+    token: string;
     amount: string;
   };
   to: {
-    chain?: string;      // Optional if using assetId
-    token: string;       // Symbol (e.g., "USDC") OR assetId
+    chain: string;
+    token: string;
   };
   user: {
     walletAddress: string;
@@ -17,49 +16,56 @@ export interface SwapRequest {
   };
 }
 
-// Enhanced token info in response
-export interface TokenInfo {
-  symbol: string;
-  assetId: string;
-  blockchain: string;
-  decimals: number;
-  contractAddress?: string;  // Optional - only for token contracts, not native tokens
+export interface TransferInstructions {
+  method: 'ft_transfer_call' | 'ft_transfer';
+  contract: string;
+  receiver: string;
   amount: string;
-  amountFormatted: string;
-  amountUsd: string;
+  msg?: string;
+  deposit: string;
+  gas: string;
+  nearCliCommand: string;
 }
 
-// Fee breakdown
-export interface FeeBreakdown {
-  platformFeeBps: number;
-  platformFeeAmount: string;
-  platformFeeFormatted: string;
-  platformFeeUsd: string;
-  networkFeeEstimate: string;
-  networkFeeFormatted: string;
-  networkFeeUsd: string;
-  totalFeeFormatted: string;
-  totalFeeUsd: string;
-}
-
-// Enhanced swap result with full token details
 export interface SwapResult {
   intentId: string;
   status: string;
   depositAddress: string;
-  from: TokenInfo;
-  to: Omit<TokenInfo, 'amount' | 'amountFormatted' | 'amountUsd'> & {
-    estimatedAmount: string;
-    estimatedFormatted: string;
-    estimatedUsd: string;
+  from: {
+    symbol: string;
+    assetId: string;
+    blockchain: string;
+    decimals: number;
+    contractAddress: string | null;
+    amount: string;
+    amountFormatted: string;
+    amountUsd: string;
   };
-  fees: FeeBreakdown;
+  to: {
+    symbol: string;
+    assetId: string;
+    blockchain: string;
+    decimals: number;
+    contractAddress: string | null;
+    estimatedOutput: string;
+    estimatedOutputFormatted: string;
+    estimatedOutputUsd: string;
+  };
   estimatedTimeSeconds: number;
-  deadline: string;
+  fees: {
+    platformFeeBps: number;
+    platformFeeAmount: string;
+    platformFeeFormatted: string;
+    networkFeeEstimate: string;
+    networkFeeFormatted: string;
+    totalFeeFormatted: string;
+  };
+  transferInstructions: TransferInstructions;
 }
 
-// Legacy types for backward compatibility (if needed during migration)
-export interface LegacySwapRequest {
+export interface SwapStatus {
+  intentId: string;
+  status: string;
   from: {
     chain: string;
     token: string;
@@ -68,11 +74,11 @@ export interface LegacySwapRequest {
   to: {
     chain: string;
     token: string;
+    estimatedOutput: string;
+    actualOutput?: string;
   };
-  user: {
-    walletAddress: string;
-  };
-  options?: {
-    webhookUrl?: string;
-  };
+  depositAddress: string;
+  txHash?: string;
+  createdAt: Date;
+  completedAt?: Date;
 }

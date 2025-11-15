@@ -112,12 +112,10 @@ class OneClickService {
         throw new TimeoutError('OneClick API', this.REQUEST_TIMEOUT);
       }
       
-      // Re-throw if already our custom error
       if (error instanceof ExternalServiceError || error instanceof TimeoutError) {
         throw error;
       }
       
-      // Wrap unknown errors
       throw new ExternalServiceError('OneClick API', error.message);
     }
   }
@@ -163,12 +161,10 @@ class OneClickService {
         throw new TimeoutError('OneClick API', this.REQUEST_TIMEOUT);
       }
       
-      // Re-throw if already our custom error
       if (error instanceof ExternalServiceError || error instanceof TimeoutError) {
         throw error;
       }
       
-      // Wrap unknown errors
       throw new ExternalServiceError('OneClick API', error.message);
     }
   }

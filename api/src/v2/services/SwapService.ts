@@ -1,7 +1,7 @@
 import OneClickService from './OneClickService';
 import TokenPriceService from './TokenPriceService';
 import TokenService from './TokenService';
-import { SwapRequest, SwapResult } from '../types/swap.types';
+import { SwapRequest, SwapResult, TransferInstructions } from '../types/swap.types';
 import { PrismaClient } from '@prisma/client';
 import { NotFoundError, ValidationError } from '../errors';
 
@@ -75,6 +75,14 @@ export class SwapService {
       toToken.symbol
     );
 
+    // Generate transfer instructions
+    const transferInstructions = this.generateTransferInstructions(
+      fromToken.contractAddress || 'wrap.near',
+      request.from.amount,
+      quote.depositAddress,
+      request.user.walletAddress
+    );
+
     // Store in database with actual user and API key
     const intent = await this.prisma.intent.create({
       data: {
@@ -99,7 +107,8 @@ export class SwapService {
             platformFeeBps: quote.fees.platformFeeBps,
             platformFeeAmount: quote.fees.platformFeeAmount,
             networkFeeEstimate: quote.fees.networkFeeEstimate
-          }
+          },
+          transferInstructions
         }
       }
     });
@@ -148,11 +157,34 @@ export class SwapService {
           fromToken.decimals,
           'NEAR'
         )
-      }
+      },
+      transferInstructions
     };
   }
 
-  async getSwapStatus(intentId: string) {
+  private generateTransferInstructions(
+    contract: string,
+    amount: string,
+    depositAddress: string,
+    userWallet: string
+  ): TransferInstructions {
+    // For NEAR Intents, we MUST use ft_transfer_call to intents.near
+    const msg = JSON.stringify({ receiver_id: depositAddress });
+    const msgEscaped = msg.replace(/"/g, '\\"');
+    
+    return {
+      method: 'ft_transfer_call',
+      contract,
+      receiver: 'intents.near',
+      amount,
+      msg,
+      deposit: '1',
+      gas: '300000000000000',
+      nearCliCommand: `near call ${contract} ft_transfer_call '{"receiver_id":"intents.near","amount":"${amount}","msg":"${msgEscaped}"}' --accountId ${userWallet} --depositYocto 1 --gas 300000000000000 --networkId mainnet`
+    };
+  }
+
+  async getSwapStatus(intentId: string): Promise<any> {
     const intent = await this.prisma.intent.findUnique({
       where: { id: intentId }
     });
@@ -160,6 +192,8 @@ export class SwapService {
     if (!intent) {
       throw new NotFoundError('Intent', intentId);
     }
+
+    const metadata = intent.metadata as any;
 
     return {
       intentId: intent.id,
@@ -172,9 +206,11 @@ export class SwapService {
       to: {
         chain: intent.toChain,
         token: intent.toToken,
-        actualOutput: intent.actualOutputAmount
+        estimatedOutput: metadata?.estimatedOutput,
+        actualOutput: intent.actualOutputAmount || metadata?.actualOutput
       },
-      txHash: intent.txHash,
+      depositAddress: metadata?.depositAddress,
+      txHash: intent.txHash || metadata?.txHash,
       createdAt: intent.createdAt,
       completedAt: intent.completedAt
     };
