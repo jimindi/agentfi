@@ -6,6 +6,7 @@ import { logger } from './utils/logger';
 import { nearIntentsService } from './services/near-intents.service';
 import { nearContractService } from './services/near-contract.service';
 import tokenService from './v2/services/TokenService';
+import { validateEnv, getConfig } from './v2/config/env.config';
 
 // Import v1 routes (old hybrid approach)
 import swapRoutes from './routes/swap.routes';
@@ -16,6 +17,16 @@ import authRoutes from './routes/auth.routes';
 import v2Routes from './v2/routes/index';
 
 export async function createApp() {
+  // Validate environment variables first
+  logger.info('Validating environment configuration...');
+  const config = validateEnv();
+  logger.info('✅ Environment configuration validated', {
+    nodeEnv: config.NODE_ENV,
+    port: config.PORT,
+    nearNetwork: config.NEAR_NETWORK,
+    apiBaseUrl: config.API_BASE_URL,
+  });
+
   const app = express();
 
   // Middleware
@@ -64,13 +75,32 @@ export async function createApp() {
     throw error;
   }
 
+  // Root endpoint
+  app.get('/', (req, res) => {
+    res.json({
+      name: 'AgentFi Cross-Chain Swap API',
+      version: '2.0.0',
+      status: 'operational',
+      documentation: 'https://docs.agentfi.divindi.tech',
+      endpoints: {
+        v2: '/v2',
+        health: '/health',
+        tokens: '/v2/tokens',
+        chains: '/v2/tokens/chains'
+      }
+    });
+  });
+
   // Health check
   app.get('/health', (req, res) => {
     const cacheInfo = tokenService.getCacheInfo();
+    const config = getConfig();
     res.json({
       status: 'healthy',
       timestamp: new Date().toISOString(),
       version: '2.0.0',
+      environment: config.NODE_ENV,
+      network: config.NEAR_NETWORK,
       services: {
         nearIntents: 'connected',
         nearContract: 'connected',
